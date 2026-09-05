@@ -994,10 +994,15 @@ async def test_turn_runtime_injects_memory_and_refreshes_after_completion(
             emit=fake_emit,
         ),
     )
+    from deeptutor.services.learning_journal.models import LearningJournal
+
     monkeypatch.setattr(
         "deeptutor.services.learning_journal.get_learning_journal_store",
         lambda: SimpleNamespace(
-            injection_markdown=lambda: "# Learning journal\n## Mission\n- Topic: FFT",
+            # An empty mission is the consolidator's opt-out, so the post-DONE
+            # handoff step stops before it would call a model.
+            load=lambda: LearningJournal(),
+            injection_markdown=lambda *, journal: "# Learning journal\n## Mission\n- Topic: FFT",
         ),
     )
     monkeypatch.setattr("deeptutor.services.skill.get_skill_service", _fake_skill_service)
@@ -1025,3 +1030,122 @@ async def test_turn_runtime_injects_memory_and_refreshes_after_completion(
     assert captured["learning_journal_context"] == ("# Learning journal\n## Mission\n- Topic: FFT")
     assert captured["conversation_history"] == []
     assert captured["conversation_context_text"] == "Recent chat summary"
+
+
+@pytest.mark.asyncio
+async def test_completed_turn_consolidates_the_learning_handoff(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    """The tutor skipped ``learning_update``; the runtime writes it instead.
+
+    The service's own unit tests cannot show the post-DONE hook is reached at
+    all, so this drives a real turn end over a real transcript.
+    """
+    from deeptutor.services.learning_journal.models import (
+        LearningJournal,
+        LearningMission,
+        LearningSessionNote,
+    )
+
+    store = SQLiteSessionStore(tmp_path / "chat_history.db")
+    runtime = TurnRuntimeManager(store)
+    journal = LearningJournal(
+        mission=LearningMission(topic="Fourier transform", updated_at="2026-01-01T00:00:00Z"),
+        last_session=LearningSessionNote(),
+    )
+    captured: dict[str, object] = {}
+    notes: list[tuple[str, str]] = []
+    stream_calls: list[dict[str, str]] = []
+
+    class FakeJournalStore:
+        def load(self) -> LearningJournal:
+            return journal
+
+        def injection_markdown(self, *, journal: LearningJournal) -> str:
+            return "# Learning journal\n## Mission\n- Topic: Fourier transform"
+
+        def note_session(self, *, summary: str, next_focus: str = "") -> SimpleNamespace:
+            notes.append((summary, next_focus))
+            return SimpleNamespace(accepted=True)
+
+    class FakeContextBuilder:
+        def __init__(self, *_args, **_kwargs) -> None:
+            pass
+
+        async def build(self, **_kwargs):
+            return SimpleNamespace(
+                conversation_history=[],
+                conversation_summary="",
+                context_text="",
+                token_count=0,
+                budget=0,
+            )
+
+    class FakeOrchestrator:
+        async def handle(self, context):
+            captured["journal_snapshot"] = context.learning_journal_context
+            yield StreamEvent(
+                type=StreamEventType.CONTENT,
+                source="chat",
+                stage="responding",
+                content="The FFT turns a signal into its spectrum.",
+                metadata={"call_kind": "llm_final_response"},
+            )
+            yield StreamEvent(type=StreamEventType.DONE, source="chat")
+
+    async def fake_stream(*, prompt: str, system_prompt: str, **_kwargs):
+        stream_calls.append({"system": system_prompt, "user": prompt})
+        if "learning journal" in system_prompt:
+            for chunk in (
+                '{"relevant": true, "summary": "Covered the FFT definition.", ',
+                '"next_focus": "Duality"}',
+            ):
+                yield chunk
+        else:
+            yield "Fourier basics"
+
+    monkeypatch.setattr("deeptutor.services.llm.config.get_llm_config", lambda: SimpleNamespace())
+    monkeypatch.setattr(
+        "deeptutor.services.session.context_builder.ContextBuilder", FakeContextBuilder
+    )
+    monkeypatch.setattr("deeptutor.runtime.orchestrator.ChatOrchestrator", FakeOrchestrator)
+    monkeypatch.setattr("deeptutor.services.llm.stream", fake_stream)
+    monkeypatch.setattr(
+        "deeptutor.services.memory.get_memory_store",
+        lambda: SimpleNamespace(read_l3_concat=lambda: "", emit=lambda *_a: None),
+    )
+    monkeypatch.setattr(
+        "deeptutor.services.learning_journal.get_learning_journal_store",
+        FakeJournalStore,
+    )
+    monkeypatch.setattr("deeptutor.services.skill.get_skill_service", _fake_skill_service)
+    monkeypatch.setattr("deeptutor.services.persona.get_persona_service", _fake_persona_service)
+
+    _session, turn = await runtime.start_turn(
+        {
+            "type": "start_turn",
+            "content": "what is the fourier transform?",
+            "session_id": None,
+            "capability": None,
+            "tools": [],
+            "knowledge_bases": [],
+            "attachments": [],
+            "memory_references": [],
+            "language": "en",
+            "config": {},
+        }
+    )
+
+    async for _event in runtime.subscribe_turn(turn["id"], after_seq=0):
+        pass
+
+    assert notes == [("Covered the FFT definition.", "Duality")]
+    # The snapshot the model saw was taken before that write, not after.
+    assert captured["journal_snapshot"] == (
+        "# Learning journal\n## Mission\n- Topic: Fourier transform"
+    )
+    handoff = [call for call in stream_calls if "learning journal" in call["system"]]
+    assert len(handoff) == 1
+    assert "Fourier transform" in handoff[0]["user"]
+    assert "what is the fourier transform?" in handoff[0]["user"]

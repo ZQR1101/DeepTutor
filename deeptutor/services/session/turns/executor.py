@@ -379,8 +379,18 @@ class TurnExecutor:
             # Selection tutoring stays isolated from carried-over study state,
             # exactly as it stays isolated from global memory.
             learning_journal_context = ""
+            learning_handoff_stamp: str | None = None
             if not selection_tutor_context:
-                learning_journal_context = get_learning_journal_store().injection_markdown()
+                journal_store = get_learning_journal_store()
+                journal_at_turn_start = journal_store.load()
+                learning_journal_context = journal_store.injection_markdown(
+                    journal=journal_at_turn_start
+                )
+                # Compared again after DONE: if the handoff moved on its own,
+                # the tutor called `learning_update` this turn and its note
+                # stands. `None` keeps the whole consolidation step off turns
+                # that were never shown the journal.
+                learning_handoff_stamp = journal_at_turn_start.last_session.updated_at
 
             # Persona: at most one behaviour preset per turn, eagerly
             # injected (a persona must shape the voice from the first
@@ -954,6 +964,21 @@ class TurnExecutor:
                     logger.warning(
                         "Session title generation failed for turn %s", turn_id, exc_info=True
                     )
+                if learning_handoff_stamp is not None:
+                    # Shares the title's post-DONE window: the answer is already
+                    # saved, so this only holds the socket open a little longer.
+                    try:
+                        await self._maybe_record_learning_handoff(
+                            session_id=session_id,
+                            handoff_stamp=learning_handoff_stamp,
+                            ui_language=str(payload.get("language", "en") or "en"),
+                        )
+                    except Exception:
+                        logger.warning(
+                            "Learning handoff consolidation failed for turn %s",
+                            turn_id,
+                            exc_info=True,
+                        )
             # Flush once every terminal/post-turn event (DONE, and the title
             # ``session_meta`` above) has been published, not before: a
             # client that reconnects after this task's ``finally`` pops
