@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from . import _turn_runtime_shared as _shared
 from .turns import (
+    LearningHandoffService,
     LearningTurnAdapter,
     SessionTitleService,
     TurnContextAssembler,
@@ -30,6 +31,7 @@ class TurnRuntimeManager(
     TurnExecutor,
     TurnLifecycle,
     SessionTitleService,
+    LearningHandoffService,
 ):
     """Backward-compatible composition of the focused v2 turn services."""
 

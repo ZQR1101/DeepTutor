@@ -107,3 +107,25 @@ def test_injection_snapshot_skips_records_only_journal(
 ) -> None:
     journal_store.add_record(title="Nyquist", insight="Sample at more than 2B.")
     assert journal_store.injection_markdown() == ""
+
+
+def test_injection_snapshot_reuses_a_journal_the_caller_already_loaded(
+    journal_store: LearningJournalStore,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The turn executor reads the journal once and renders twice from it."""
+    journal_store.set_mission(topic="Fourier transform")
+    journal = journal_store.load()
+    reads: list[int] = []
+    load = journal_store.load
+
+    def counted_load():
+        reads.append(1)
+        return load()
+
+    monkeypatch.setattr(journal_store, "load", counted_load)
+
+    assert journal_store.injection_markdown(journal=journal).count("Fourier") == 1
+    assert reads == []
+    journal_store.injection_markdown()
+    assert reads == [1]
