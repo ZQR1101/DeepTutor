@@ -112,7 +112,7 @@ class LearningJournalStore:
         )
         return "\n".join(lines).rstrip() + "\n"
 
-    def injection_markdown(self) -> str:
+    def injection_markdown(self, *, journal: LearningJournal | None = None) -> str:
         """The resumable slice of the journal, for the per-turn system prompt.
 
         Records are left out on purpose, and an empty journal yields ``""`` so
@@ -120,8 +120,13 @@ class LearningJournalStore:
         journal history. ``learning_status`` advertises the journal to the
         model through its own description, so an empty one needs no repeated
         advertisement, and the full history stays one tool call away.
+
+        Pass ``journal`` when the caller already loaded the aggregate — the
+        turn executor snapshots it once and reuses it, rather than reading the
+        file twice per turn.
         """
-        journal = self.load()
+        if journal is None:
+            journal = self.load()
         parts: list[list[str]] = []
         mission_lines = self._mission_lines(journal.mission)
         if mission_lines:
