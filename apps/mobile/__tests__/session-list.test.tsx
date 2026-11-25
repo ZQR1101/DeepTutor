@@ -101,7 +101,7 @@ test('a failed first page reports an error the learner can retry', async () => {
   const list = jest
     .fn()
     .mockRejectedValueOnce(
-      new ApiError('network', 'Could not reach the DeepTutor server.'),
+      new ApiError('network', '无法连接 DeepTutor 服务器。'),
     )
     .mockResolvedValueOnce(page([summary('a')]));
   const api = fakeApi({ list });
@@ -109,7 +109,7 @@ test('a failed first page reports an error the learner can retry', async () => {
 
   await waitFor(() => expect(result.current.status).toBe('failed'));
   expect(result.current.error).toBe(
-    'Could not reach the server. Check your connection.',
+    '无法连接服务器，请检查网络。',
   );
 
   await act(() => result.current.retry());
@@ -119,13 +119,13 @@ test('a failed first page reports an error the learner can retry', async () => {
 
 test('an expired session is named as an authentication problem', async () => {
   const list = jest.fn(async () => {
-    throw new ApiError('unauthorized', 'Sign-in is required.', 401);
+    throw new ApiError('unauthorized', '请先登录。', 401);
   });
   const { result } = renderHook(() => useSessionList(fakeApi({ list })));
 
   await waitFor(() => expect(result.current.status).toBe('failed'));
   expect(result.current.error).toBe(
-    'Sign in again to see your conversations.',
+    '请重新登录后查看历史会话。',
   );
 });
 

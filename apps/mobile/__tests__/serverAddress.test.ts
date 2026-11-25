@@ -17,7 +17,7 @@ describe('serverOrigin', () => {
     'http://[::1]:18001',
   ])('accepts %s only in local development', address => {
     expect(serverOrigin(address, true)).toBe(address);
-    expect(() => serverOrigin(address, false)).toThrow('Use HTTPS');
+    expect(() => serverOrigin(address, false)).toThrow('请使用 HTTPS');
   });
 
   test.each([

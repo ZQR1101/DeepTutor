@@ -66,7 +66,7 @@ test('rejects a login that cannot establish an authenticated cookie session', as
     auth.login('demo', 'pass', new AbortController().signal),
   ).rejects.toMatchObject({
     kind: 'unauthorized',
-    message: 'The server could not establish a session.',
+    message: '服务器未能建立登录会话。',
   });
 });
 
@@ -78,7 +78,7 @@ test('handles bad credentials and an expired cookie distinctly', async () => {
   await expect(auth.login('demo', 'wrong', signal)).rejects.toMatchObject({
     kind: 'unauthorized',
     status: 401,
-    message: 'Check your username and password.',
+    message: '请检查用户名和密码。',
   });
   await expect(auth.status(signal)).resolves.toEqual({
     enabled: true,
@@ -111,7 +111,7 @@ test('does not expose native networking exception text', async () => {
     ),
   );
   await expect(auth.status(new AbortController().signal)).rejects.toMatchObject(
-    { kind: 'network', message: 'Could not reach the DeepTutor server.' },
+    { kind: 'network', message: '无法连接 DeepTutor 服务器。' },
   );
 });
 

@@ -67,7 +67,7 @@ test('a first-load failure is reported instead of looking like an empty list', a
   const { result } = renderHook(() => useKnowledgeBases(fakeApi(list)));
   await waitFor(() => expect(result.current.status).toBe('failed'));
   expect(result.current.error).toBe(
-    'Could not reach the server. Check your connection.',
+    '无法连接服务器，请检查网络。',
   );
 });
 
@@ -84,7 +84,7 @@ test('a failed refresh keeps the rows already on screen', async () => {
   });
   expect(result.current.status).toBe('ready');
   expect(result.current.bases.map(item => item.name)).toEqual(['physics']);
-  expect(result.current.error).toBe('The server took too long to answer. Try again.');
+  expect(result.current.error).toBe('服务器响应超时，请重试。');
   expect(result.current.refreshing).toBe(false);
 });
 

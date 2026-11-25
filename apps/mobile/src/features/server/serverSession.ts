@@ -103,7 +103,7 @@ export class ServerSession {
           error:
             error instanceof Error
               ? error.message
-              : 'Could not connect to DeepTutor.',
+              : '无法连接 DeepTutor。',
         });
       }
     } finally {
@@ -159,7 +159,7 @@ export class ServerSession {
       const { origin, phase } = this.state;
       if (phase !== 'login' || !origin) return;
       if (!username.trim() || !password) {
-        throw new Error('Enter your username and password.');
+        throw new Error('请输入用户名和密码。');
       }
       const status = await this.dependencies
         .authFor(origin)
@@ -219,7 +219,7 @@ export class ServerSession {
     if (!isCurrent()) return;
     if (logoutFailure) throw logoutFailure;
     if (!logout)
-      this.update({ error: 'Sign in again to reconnect to this server.' });
+      this.update({ error: '请重新登录以连接此服务器。' });
   }
 
   readonly disconnect = (): Promise<void> =>
@@ -253,13 +253,13 @@ export class ServerSession {
         : Promise.resolve(),
     ]);
     if (cookies.status === 'rejected') {
-      throw new Error('Could not clear the saved session. Try again.');
+      throw new Error('无法清除已保存的登录状态，请重试。');
     }
     if (saved.status === 'rejected') {
-      throw new Error('Could not update the saved server address.');
+      throw new Error('无法更新已保存的服务器地址。');
     }
     if (recovery.status === 'rejected') {
-      throw new Error('Could not clear the saved task state.');
+      throw new Error('无法清除已保存的任务状态。');
     }
   }
 

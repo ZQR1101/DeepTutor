@@ -23,7 +23,7 @@ export default function KnowledgeRoute() {
 
   const create = useCallback(
     async (name: string) => {
-      if (!api) return 'This device is not connected to a server.';
+      if (!api) return '此设备尚未连接服务器。';
       setCreating(true);
       try {
         const created = await api.create(name);

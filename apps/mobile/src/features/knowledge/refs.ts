@@ -140,16 +140,16 @@ export function fileState(
 }
 
 const LABELS: Record<DocumentState | FileState, string> = {
-  queued: 'Queued',
-  parsing: 'Parsing',
-  indexing: 'Indexing',
-  ready: 'Ready',
-  needs_reindex: 'Re-index needed',
-  failed: 'Failed',
-  unknown: 'Unknown',
-  in_progress: 'In progress',
-  run_done: 'Run done',
-  stale: 'Re-index needed',
+  queued: '排队中',
+  parsing: '解析中',
+  indexing: '索引中',
+  ready: '就绪',
+  needs_reindex: '需要重建索引',
+  failed: '失败',
+  unknown: '未知',
+  in_progress: '处理中',
+  run_done: '本轮处理完成',
+  stale: '需要重建索引',
 };
 
 export function stateLabel(state: DocumentState | FileState): string {
@@ -189,7 +189,7 @@ export function failureReason(
   progress: KnowledgeProgress | null,
   lastError: string,
 ): string {
-  return progress?.error || lastError || 'The server did not say why it failed.';
+  return progress?.error || lastError || '服务器未提供失败原因。';
 }
 
 /** Sort with ready bases first, then by name, so the picker opens usefully. */

@@ -9,7 +9,7 @@ export function serverOrigin(
   allowLocalHttp = __DEV__,
 ): string {
   const match = ORIGIN_PATTERN.exec(address.trim());
-  const invalid = 'Enter a server address like https://tutor.example.com.';
+  const invalid = '请输入服务器地址，例如 https://tutor.example.com。';
   if (!match) {
     throw new Error(invalid);
   }
@@ -41,7 +41,7 @@ export function serverOrigin(
     throw new Error(invalid);
   }
   if (protocol === 'http' && !(allowLocalHttp && DEV_HTTP_HOSTS.has(host))) {
-    throw new Error('Use HTTPS to connect to this server.');
+    throw new Error('请使用 HTTPS 连接此服务器。');
   }
   const defaultPort = protocol === 'https' ? 443 : 80;
   return `${protocol}://${parsed.hostname.toLowerCase()}${

@@ -383,7 +383,7 @@ test('an expired cookie during recovery asks for a new sign-in', async () => {
   const memory = memoryStore(record);
   const onAuthExpired = jest.fn();
   const get = jest.fn(async () => {
-    throw new ApiError('unauthorized', 'Sign-in is required.', 401);
+    throw new ApiError('unauthorized', '请先登录。', 401);
   });
   const { runtime } = harness({ get }, memory.store, { onAuthExpired });
 
@@ -394,7 +394,7 @@ test('an expired cookie during recovery asks for a new sign-in', async () => {
   expect(runtime.getSnapshot()).toMatchObject({
     status: 'idle',
     history: 'failed',
-    error: 'Sign in again to load this conversation.',
+    error: '请重新登录后加载此会话。',
   });
   expect(memory.peek()).not.toBeNull();
   runtime.stop();
@@ -443,7 +443,7 @@ test('switching conversations is refused while a response is running', async () 
   await expect(runtime.openSession('session-9')).resolves.toBe(false);
   expect(get).not.toHaveBeenCalled();
   expect(runtime.getSnapshot().error).toContain(
-    'Stop the current response before switching',
+    '请先停止当前回复，再切换会话。',
   );
   runtime.stop();
 });

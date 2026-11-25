@@ -81,15 +81,15 @@ export function KnowledgeListScreen({
             accessibilityRole="header"
             style={[styles.title, { color: theme.text }]}
           >
-            Knowledge
+            知识库
           </Text>
           <Text style={[styles.hint, { color: theme.muted }]}>
-            Files are parsed and indexed on your server.
+            文件由服务器解析并建立索引。
           </Text>
         </View>
         <View style={styles.headerActions}>
-          <Action title="Back" tone="secondary" onPress={onBack} />
-          <Action title="New" onPress={() => setComposing(true)} />
+          <Action title="返回" tone="secondary" onPress={onBack} />
+          <Action title="新建" onPress={() => setComposing(true)} />
         </View>
       </View>
 
@@ -97,7 +97,7 @@ export function KnowledgeListScreen({
         <View style={styles.noticeRow}>
           <ErrorNotice message={error} />
           {status === 'failed' ? (
-            <Action title="Try again" tone="secondary" onPress={onRetry} />
+            <Action title="重试" tone="secondary" onPress={onRetry} />
           ) : null}
         </View>
       ) : null}
@@ -106,7 +106,7 @@ export function KnowledgeListScreen({
         <View style={styles.center} accessibilityLiveRegion="polite">
           <ActivityIndicator color={theme.primary} />
           <Text style={[styles.hint, { color: theme.muted }]}>
-            Loading knowledge bases…
+            正在加载知识库…
           </Text>
         </View>
       ) : (
@@ -125,10 +125,10 @@ export function KnowledgeListScreen({
             status === 'failed' ? null : (
               <View style={styles.center}>
                 <Text style={[styles.emptyTitle, { color: theme.text }]}>
-                  No knowledge bases yet
+                  暂无知识库
                 </Text>
                 <Text style={[styles.hint, { color: theme.muted }]}>
-                  Create one, then upload the documents you want to ask about.
+                  新建知识库后，上传你想用来提问的文档。
                 </Text>
               </View>
             )
@@ -165,10 +165,9 @@ export function KnowledgeListScreen({
                     </Text>
                   ) : null}
                   <Text style={[styles.hint, { color: theme.muted }]}>
-                    {item.documentCount} document
-                    {item.documentCount === 1 ? '' : 's'}
-                    {item.assigned ? ' · shared with you' : ''}
-                    {item.readOnly ? ' · read-only' : ''}
+                    {item.documentCount} 份文档
+                    {item.assigned ? ' · 与你共享' : ''}
+                    {item.readOnly ? ' · 只读' : ''}
                   </Text>
                 </View>
                 <StateBadge state={state} />
@@ -195,30 +194,30 @@ export function KnowledgeListScreen({
               accessibilityRole="header"
               style={[styles.sheetTitle, { color: theme.text }]}
             >
-              New knowledge base
+              新建知识库
             </Text>
             <Text style={[styles.hint, { color: theme.muted }]}>
-              Give it a name. Upload documents on the next screen.
+              输入名称，创建后即可上传文档。
             </Text>
             <Field
-              label="Name"
+              label="名称"
               value={name}
               onChangeText={setName}
               autoFocus
-              placeholder="Biology notes"
+              placeholder="生物笔记"
               editable={!creating}
               onSubmitEditing={submit}
             />
             <ErrorNotice message={createError} />
             <View style={styles.sheetActions}>
               <Action
-                title="Cancel"
+                title="取消"
                 tone="secondary"
                 disabled={creating}
                 onPress={closeCreate}
               />
               <Action
-                title="Create"
+                title="创建"
                 busy={creating}
                 disabled={!name.trim()}
                 onPress={submit}

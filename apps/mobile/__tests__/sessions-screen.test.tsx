@@ -75,14 +75,14 @@ test('renders rows and flags the one with a running turn', () => {
     />,
   );
   expect(screen.getByText('Conversation a')).toBeTruthy();
-  expect(screen.getByText('Running')).toBeTruthy();
+  expect(screen.getByText('进行中')).toBeTruthy();
   fireEvent.press(screen.getByText('Conversation a'));
   expect(onOpen).toHaveBeenCalledWith('a');
 });
 
 test('an empty index invites the first question', () => {
   render(<SessionsScreen {...sessions()} />);
-  expect(screen.getByText('No conversations yet')).toBeTruthy();
+  expect(screen.getByText('暂无历史会话')).toBeTruthy();
 });
 
 test('a failed index can be retried', () => {
@@ -91,19 +91,19 @@ test('a failed index can be retried', () => {
     <SessionsScreen
       {...sessions({
         status: 'failed',
-        error: 'Could not load your conversations.',
+        error: '无法加载历史会话。',
         onRetry,
       })}
     />,
   );
-  fireEvent.press(button('Try again'));
+  fireEvent.press(button('重试'));
   expect(onRetry).toHaveBeenCalledTimes(1);
 });
 
 test('a new chat is one press away', () => {
   const onNewChat = jest.fn();
   render(<SessionsScreen {...sessions({ onNewChat })} />);
-  fireEvent.press(button('New'));
+  fireEvent.press(button('新建'));
   expect(onNewChat).toHaveBeenCalledTimes(1);
 });
 
@@ -111,9 +111,9 @@ test('renaming sends the trimmed title the learner typed', async () => {
   const onRename = jest.fn(async () => {});
   render(<SessionsScreen {...sessions({ sessions: [row('a')], onRename })} />);
 
-  fireEvent.press(button('Rename'));
-  fireEvent.changeText(screen.getByLabelText('Title'), '  Halves  ');
-  fireEvent.press(button('Save'));
+  fireEvent.press(button('重命名'));
+  fireEvent.changeText(screen.getByLabelText('标题'), '  Halves  ');
+  fireEvent.press(button('保存'));
 
   await waitFor(() => expect(onRename).toHaveBeenCalledWith('a', 'Halves'));
 });
@@ -124,15 +124,15 @@ test('a failed rename keeps the dialog open and explains itself', async () => {
   });
   render(<SessionsScreen {...sessions({ sessions: [row('a')], onRename })} />);
 
-  fireEvent.press(button('Rename'));
-  fireEvent.press(button('Save'));
+  fireEvent.press(button('重命名'));
+  fireEvent.press(button('保存'));
 
   await waitFor(() =>
     expect(
-      screen.getByText('Could not rename this conversation. Try again.'),
+      screen.getByText('重命名会话失败，请重试。'),
     ).toBeTruthy(),
   );
-  expect(screen.getByLabelText('Title')).toBeTruthy();
+  expect(screen.getByLabelText('标题')).toBeTruthy();
 });
 
 test('deleting asks before removing anything', () => {
@@ -140,13 +140,13 @@ test('deleting asks before removing anything', () => {
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   try {
     render(<SessionsScreen {...sessions({ sessions: [row('a')], onDelete })} />);
-    fireEvent.press(button('Delete'));
+    fireEvent.press(button('删除'));
     expect(onDelete).not.toHaveBeenCalled();
     const choices = alert.mock.calls[0][2] as {
       text: string;
       onPress?: () => void;
     }[];
-    choices.find(choice => choice.text === 'Delete')?.onPress?.();
+    choices.find(choice => choice.text === '删除')?.onPress?.();
     expect(onDelete).toHaveBeenCalledWith('a');
   } finally {
     alert.mockRestore();
@@ -160,16 +160,16 @@ test('a rejected delete is reported without removing the row', async () => {
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   try {
     render(<SessionsScreen {...sessions({ sessions: [row('a')], onDelete })} />);
-    fireEvent.press(button('Delete'));
+    fireEvent.press(button('删除'));
     const choices = alert.mock.calls[0][2] as {
       text: string;
       onPress?: () => void;
     }[];
-    choices.find(choice => choice.text === 'Delete')?.onPress?.();
+    choices.find(choice => choice.text === '删除')?.onPress?.();
 
     await waitFor(() =>
       expect(
-        screen.getByText('Could not delete this conversation. Try again.'),
+        screen.getByText('删除会话失败，请重试。'),
       ).toBeTruthy(),
     );
     expect(screen.getByText('Conversation a')).toBeTruthy();

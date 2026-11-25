@@ -368,27 +368,27 @@ export class KnowledgeApi {
 export function messageFor(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.kind === 'unauthorized') {
-      return 'Sign in again to manage your knowledge bases.';
+      return '请重新登录后管理知识库。';
     }
     if (error.kind === 'timeout') {
-      return 'The server took too long to answer. Try again.';
+      return '服务器响应超时，请重试。';
     }
     if (error.kind === 'network') {
-      return 'Could not reach the server. Check your connection.';
+      return '无法连接服务器，请检查网络。';
     }
     if (error.status === 404) {
-      return 'This knowledge base no longer exists on the server.';
+      return '服务器上已没有此知识库。';
     }
     // The server's own explanation is more specific than anything this client
     // can infer from a status code — a 409 can mean a missing embedding model,
     // a read-only base or a run that has already finished.
     if (error.detail) return error.detail;
     if (error.status === 409) {
-      return 'The server refused this change in the base’s current state.';
+      return '此知识库当前无法执行这项修改。';
     }
     if (error.status === 403) {
-      return 'This knowledge base is read-only for your account.';
+      return '你对此知识库只有读取权限。';
     }
   }
-  return 'The server could not complete that request.';
+  return '服务器未能完成请求。';
 }

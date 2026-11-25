@@ -297,7 +297,7 @@ export class MobileChatRuntime {
     if (this.active) {
       if (!silent) {
         this.update({
-          error: 'Stop the current response before switching conversations.',
+          error: '请先停止当前回复，再切换会话。',
         });
       }
       return false;
@@ -462,7 +462,7 @@ export class MobileChatRuntime {
       if (this.active !== active || active.turnId) return;
       this.finishTurn(
         'failed',
-        'The server did not confirm the request. Check your connection and try again.',
+        '服务器未确认请求，请检查网络后重试。',
       );
       // Reconnect without replaying a start whose admission is unknown.
       this.closeTransport();
@@ -489,7 +489,7 @@ export class MobileChatRuntime {
       this.unconfirmedSubmission = null;
       this.finishTurn(
         'failed',
-        'Unable to send this message. Check your connection.',
+        '无法发送消息，请检查网络。',
       );
       this.closeTransport();
       this.openTransport();
@@ -530,7 +530,7 @@ export class MobileChatRuntime {
       if (!accepted && this.active === active) {
         this.finishTurn(
           'failed',
-          'That question is no longer waiting for a reply.',
+          '这个问题已不再等待回复。',
         );
       }
       return accepted;
@@ -544,7 +544,7 @@ export class MobileChatRuntime {
           status: 'waiting_for_input',
           waitingPrompt: prompt,
           error:
-            'Could not confirm your reply. Check your connection and try again.',
+            '无法确认回复，请检查网络后重试。',
         });
         this.watchTurn(active);
       }
@@ -634,7 +634,7 @@ export class MobileChatRuntime {
         knowledgeBasesTouched: false,
         recovery: {
           kind: 'resumed',
-          message: 'Reconnected to a response that was still running.',
+          message: '已恢复正在进行的回复。',
         },
       });
       // seq 0 makes the server replay the whole turn so the answer rebuilds
@@ -661,7 +661,7 @@ export class MobileChatRuntime {
       recovery: record
         ? {
             kind: 'settled',
-            message: 'The response finished while the app was away.',
+            message: 'App 离开期间，回复已完成。',
           }
         : null,
     });
@@ -693,7 +693,7 @@ export class MobileChatRuntime {
         status: 'idle',
         recovery: {
           kind: 'unavailable',
-          message: 'This conversation no longer exists on the server.',
+          message: '服务器上已没有此会话。',
         },
         error: null,
       });
@@ -705,7 +705,7 @@ export class MobileChatRuntime {
       this.update({
         history: 'failed',
         status: 'idle',
-        error: 'Sign in again to load this conversation.',
+        error: '请重新登录后加载此会话。',
       });
       return;
     }
@@ -714,8 +714,8 @@ export class MobileChatRuntime {
       status: 'idle',
       error:
         api?.kind === 'network' || api?.kind === 'timeout'
-          ? 'Could not reach the server to load this conversation.'
-          : 'Could not load this conversation.',
+          ? '无法连接服务器来加载此会话。'
+          : '无法加载此会话。',
     });
   }
 
@@ -829,7 +829,7 @@ export class MobileChatRuntime {
       active.cancelSent = false;
       this.update({
         status: this.state.waitingPrompt ? 'waiting_for_input' : 'running',
-        error: 'Could not confirm the stop request. Try Stop again.',
+        error: '无法确认停止请求，请再次点击停止。',
         canLeaveTurn: true,
       });
       // The run is still the server's; keep the idle watchdog armed so a
@@ -982,21 +982,21 @@ export class MobileChatRuntime {
         active.turnId &&
         event.turn_id === active.turnId
       ) {
-        const error = 'The connection could not recover this response.';
+        const error = '重新连接后仍无法恢复此回复。';
         if (event.retryable) this.retryReplay(active, error);
         else this.finishTurn('failed', error);
       } else if (START_ERRORS.has(event.error_code) && !active.turnId) {
         this.finishTurn(
           'failed',
           event.error_code === NO_LLM_ACCESS
-            ? 'Your account does not have access to a model.'
-            : 'The server rejected the request.',
+            ? '当前账号没有可用的模型。'
+            : '服务器拒绝了请求。',
         );
         this.closeTransport();
         this.openTransport();
       } else {
         this.update({
-          error: 'The connection could not recover this response.',
+          error: '重新连接后仍无法恢复此回复。',
         });
       }
       return;
@@ -1064,7 +1064,7 @@ export class MobileChatRuntime {
           return;
         }
         this.update({
-          error: 'The server reported an error.',
+          error: '服务器报告了错误。',
         });
         break;
       case 'done':
@@ -1081,7 +1081,7 @@ export class MobileChatRuntime {
 
   private observeTerminal(active: ActiveTurn, failed = false) {
     const error = failed
-      ? 'The server could not finish the response.'
+      ? '服务器未能完成回复。'
       : undefined;
     // DONE can arrive before the server releases the owner lease. Let the
     // Stop ACK confirm release before allowing another turn to start.
@@ -1142,7 +1142,7 @@ export class MobileChatRuntime {
           this.update({
             canLeaveTurn: true,
             error:
-              'No updates from this response. Reconnect or start a new chat.',
+              '回复长时间没有更新，请重新连接或新建对话。',
           });
           return;
         }

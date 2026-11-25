@@ -77,7 +77,7 @@ export default function KnowledgeDetailRoute() {
       // unmounted hook and releases the copies instead of queueing them.
       if (files.length) uploads.upload(files);
     } catch {
-      setActionError('Could not open the file picker on this device.');
+      setActionError('无法打开此设备的文件选择器。');
     }
   }, [uploads]);
 

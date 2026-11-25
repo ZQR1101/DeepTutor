@@ -22,11 +22,11 @@ export function ServerScreen({
 
   return (
     <FormScreen
-      title="Connect to DeepTutor"
-      description="Enter the address of your DeepTutor server. If someone set it up for you, ask them for the link."
+      title="连接 DeepTutor"
+      description="请输入 DeepTutor 服务器地址。如果服务器由他人配置，请向对方获取地址。"
     >
       <Field
-        label="Server address"
+        label="服务器地址"
         value={address}
         onChangeText={setAddress}
         editable={!busy}
@@ -39,7 +39,7 @@ export function ServerScreen({
       />
       <ErrorNotice message={error} />
       <Action
-        title={busy ? 'Connecting…' : 'Connect'}
+        title={busy ? '正在连接…' : '连接'}
         busy={busy}
         disabled={!canConnect && !busy}
         onPress={connect}

@@ -31,7 +31,7 @@ export function SettingsScreen({
         ]}
       >
         <Text style={[styles.label, { color: theme.muted }]}>
-          Current server
+          当前服务器
         </Text>
         <Text selectable style={[styles.address, { color: theme.text }]}>
           {origin}
@@ -40,21 +40,21 @@ export function SettingsScreen({
       <ErrorNotice message={error} />
       {authenticated ? (
         <Action
-          title="Knowledge bases"
+          title="知识库"
           onPress={onOpenKnowledge}
           tone="secondary"
           disabled={busy}
         />
       ) : null}
       <Action
-        title="Change server"
+        title="切换服务器"
         onPress={onChangeServer}
         tone="secondary"
         disabled={busy}
       />
       {authenticated ? (
         <Action
-          title={busy ? 'Signing out…' : 'Sign out'}
+          title={busy ? '正在退出…' : '退出登录'}
           onPress={onSignOut}
           busy={busy}
         />

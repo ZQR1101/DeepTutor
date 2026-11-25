@@ -28,9 +28,9 @@ export function LoginScreen({
   }
 
   return (
-    <FormScreen title="Sign in to DeepTutor" description={origin}>
+    <FormScreen title="登录 DeepTutor" description={origin}>
       <Field
-        label="Username"
+        label="用户名"
         value={username}
         onChangeText={setUsername}
         editable={!busy}
@@ -43,7 +43,7 @@ export function LoginScreen({
       />
       <Field
         ref={passwordField}
-        label="Password"
+        label="密码"
         value={password}
         onChangeText={setPassword}
         editable={!busy}
@@ -54,13 +54,13 @@ export function LoginScreen({
       />
       <ErrorNotice message={error} />
       <Action
-        title={busy ? 'Signing in…' : 'Sign in'}
+        title={busy ? '正在登录…' : '登录'}
         busy={busy}
         disabled={!canSignIn && !busy}
         onPress={signIn}
       />
       <Action
-        title="Change server"
+        title="切换服务器"
         onPress={onChangeServer}
         tone="secondary"
         disabled={busy}

@@ -12,6 +12,6 @@ export default function IndexRoute() {
     case 'chat':
       return <Redirect href="/chat" />;
     case 'loading':
-      return <LoadingScreen label="Checking your connection…" />;
+      return <LoadingScreen label="正在检查连接…" />;
   }
 }

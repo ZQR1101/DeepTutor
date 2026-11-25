@@ -49,7 +49,7 @@ function SessionStack() {
             name="knowledge/detail"
             options={{ headerShown: false }}
           />
-          <Stack.Screen name="settings" options={{ title: 'Settings' }} />
+          <Stack.Screen name="settings" options={{ title: '设置' }} />
         </Stack.Protected>
       </Stack>
     </>

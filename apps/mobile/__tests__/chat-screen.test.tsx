@@ -61,16 +61,16 @@ test('the header names the open conversation and reaches the list', () => {
   render(<ChatScreen {...props} />);
 
   expect(screen.getByText('Fractions')).toBeTruthy();
-  expect(screen.getByText('Connected · saved on the server')).toBeTruthy();
-  fireEvent.press(button('Conversations'));
+  expect(screen.getByText('已连接 · 已保存到服务器')).toBeTruthy();
+  fireEvent.press(button('历史会话'));
   expect(props.onOpenSessions).toHaveBeenCalledTimes(1);
 });
 
 test('a running turn offers Stop instead of Send', () => {
   render(<ChatScreen {...chat({ status: 'running' })} />);
-  expect(screen.getByText('DeepTutor is replying…')).toBeTruthy();
-  expect(screen.queryAllByRole('button', { name: 'Send' })).toHaveLength(0);
-  expect(button('Stop')).toBeTruthy();
+  expect(screen.getByText('DeepTutor 正在回复…')).toBeTruthy();
+  expect(screen.queryAllByRole('button', { name: '发送' })).toHaveLength(0);
+  expect(button('停止')).toBeTruthy();
 });
 
 test('a waiting turn asks for the reply the server needs', async () => {
@@ -85,21 +85,21 @@ test('a waiting turn asks for the reply the server needs', async () => {
     />,
   );
   expect(screen.getByText('Which subject?')).toBeTruthy();
-  // The composer's field and its button are both labelled "Reply", so the
+  // The composer's field and its button are both labelled "回复", so the
   // placeholder is what identifies the input.
-  fireEvent.changeText(screen.getByPlaceholderText('Write a reply'), 'Math');
+  fireEvent.changeText(screen.getByPlaceholderText('输入回复'), 'Math');
   // Submitting clears the draft after the reply resolves, so the press is
   // awaited rather than fired and forgotten.
   await act(async () => {
-    fireEvent.press(button('Reply'));
+    fireEvent.press(button('回复'));
   });
   expect(reply).toHaveBeenCalledWith('Math');
 });
 
 test('a stopped response says so and accepts the next question', () => {
   render(<ChatScreen {...chat({ status: 'cancelled' })} />);
-  expect(screen.getByText('This response was stopped.')).toBeTruthy();
-  expect(button('Send')).toBeTruthy();
+  expect(screen.getByText('已停止回复。')).toBeTruthy();
+  expect(button('发送')).toBeTruthy();
 });
 
 test('the knowledge entry names the documents the next question will cite', () => {
@@ -129,14 +129,14 @@ test('the knowledge entry names the documents the next question will cite', () =
   });
   render(<ChatScreen {...props} />);
 
-  expect(button('Knowledge · 1')).toBeTruthy();
+  expect(button('知识库 · 1')).toBeTruthy();
   expect(screen.getByText('physics')).toBeTruthy();
 
-  fireEvent.press(button('Knowledge · 1'));
+  fireEvent.press(button('知识库 · 1'));
   fireEvent.press(screen.getByLabelText('physics'));
   expect(props.onToggleKnowledge).toHaveBeenCalledWith('user:kb:physics');
 
-  fireEvent.press(button('Manage'));
+  fireEvent.press(button('管理'));
   expect(props.onManageKnowledge).toHaveBeenCalledTimes(1);
 });
 
@@ -148,16 +148,16 @@ test('a recovered run explains itself and can be dismissed', () => {
         status: 'recovering',
         recovery: {
           kind: 'resumed',
-          message: 'Reconnected to a response that was still running.',
+          message: '已恢复正在进行的回复。',
         },
         dismissRecovery,
       })}
     />,
   );
   expect(
-    screen.getByText('Reconnected to a response that was still running.'),
+    screen.getByText('已恢复正在进行的回复。'),
   ).toBeTruthy();
-  fireEvent.press(button('Dismiss'));
+  fireEvent.press(button('关闭'));
   expect(dismissRecovery).toHaveBeenCalledTimes(1);
 });
 
@@ -168,20 +168,20 @@ test('a conversation the server lost offers a fresh start', () => {
       {...chat({
         recovery: {
           kind: 'unavailable',
-          message: 'This conversation no longer exists on the server.',
+          message: '服务器上已没有此会话。',
         },
         reset,
       })}
     />,
   );
-  fireEvent.press(button('New chat'));
+  fireEvent.press(button('新建对话'));
   expect(reset).toHaveBeenCalledTimes(1);
 });
 
 test('a failed transcript load can be retried', () => {
   const retrySession = jest.fn(async () => true);
   render(<ChatScreen {...chat({ history: 'failed', retrySession })} />);
-  fireEvent.press(button('Try again'));
+  fireEvent.press(button('重试'));
   expect(retrySession).toHaveBeenCalledTimes(1);
 });
 
@@ -193,15 +193,15 @@ test('a transcript that failed to load does not accept a question', () => {
         history: 'failed',
         sessionId: 'session-1',
         send,
-        error: 'Could not load this conversation.',
+        error: '无法加载此会话。',
       })}
     />,
   );
   fireEvent.changeText(
-    screen.getByPlaceholderText('Ask a question'),
+    screen.getByPlaceholderText('输入你的问题'),
     'What about quarters?',
   );
-  const submit = button('Send');
+  const submit = button('发送');
   expect(submit.props.accessibilityState?.disabled).toBe(true);
   fireEvent.press(submit);
   expect(send).not.toHaveBeenCalled();

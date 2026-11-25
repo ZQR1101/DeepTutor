@@ -27,13 +27,13 @@ const emptyState: SessionListState = {
 function messageFor(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.kind === 'unauthorized') {
-      return 'Sign in again to see your conversations.';
+      return '请重新登录后查看历史会话。';
     }
     if (error.kind === 'network' || error.kind === 'timeout') {
-      return 'Could not reach the server. Check your connection.';
+      return '无法连接服务器，请检查网络。';
     }
   }
-  return 'Could not load your conversations.';
+  return '无法加载历史会话。';
 }
 
 /** A row can move between offset pages while the index loads; keep one copy. */

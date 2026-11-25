@@ -12,11 +12,11 @@ interface NetworkingCookies extends TurboModule {
 export async function clearNativeCookies(): Promise<void> {
   const networking = TurboModuleRegistry.get<NetworkingCookies>('Networking');
   if (!networking || typeof networking.clearCookies !== 'function') {
-    throw new Error('This build cannot clear the saved server session.');
+    throw new Error('此版本无法清除已保存的登录状态。');
   }
   await new Promise<void>((resolve, reject) => {
     const timer = setTimeout(
-      () => reject(new Error('The saved server session could not be cleared.')),
+      () => reject(new Error('无法清除已保存的登录状态。')),
       5000,
     );
     // False means the store was already empty on either supported platform.

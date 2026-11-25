@@ -79,14 +79,14 @@ function statusCopy(
 ): string {
   if (state === 'failed') return failureReason(kb.progress, kb.lastError);
   if (state === 'needs_reindex') {
-    return 'The index is older than its documents. Rebuild it from the web app to cite them.';
+    return '文档已更新，请在网页版重建索引后再引用。';
   }
   if (state === 'ready') {
     return kb.ragInitialized
-      ? 'Answers can cite these documents.'
-      : 'This base has not been indexed yet.';
+      ? '回答可以引用这些文档。'
+      : '此知识库尚未建立索引。';
   }
-  return live?.message || 'The server is working on this base.';
+  return live?.message || '服务器正在处理此知识库。';
 }
 
 function UploadRow({
@@ -106,14 +106,14 @@ function UploadRow({
   const uploading = item.status === 'uploading';
   const copy =
     item.status === 'queued'
-      ? 'Waiting to upload…'
+      ? '等待上传…'
       : item.status === 'uploading'
-        ? `${percent}% · ${formatBytes(item.loaded)} of ${formatBytes(item.total)}`
+        ? `${percent}% · ${formatBytes(item.loaded)} / ${formatBytes(item.total)}`
         : item.status === 'done'
-          ? 'Uploaded. The server is processing it.'
+          ? '上传完成，服务器正在处理。'
           : item.status === 'cancelled'
-            ? 'Upload cancelled. The server keeps whatever it already received.'
-            : item.error || 'The upload failed.';
+            ? '已取消上传，服务器会保留已收到的内容。'
+            : item.error || '上传失败。';
 
   return (
     <View
@@ -128,22 +128,22 @@ function UploadRow({
         </Text>
         {uploading || item.status === 'queued' ? (
           <Action
-            title="Cancel"
-            label={`Cancel ${item.name}`}
+            title="取消"
+            label={`取消上传 ${item.name}`}
             tone="secondary"
             onPress={onCancel}
           />
         ) : item.status === 'failed' && item.retryable ? (
           <Action
-            title="Retry"
-            label={`Retry ${item.name}`}
+            title="重试"
+            label={`重试上传 ${item.name}`}
             tone="secondary"
             onPress={onRetry}
           />
         ) : (
           <Action
-            title="Dismiss"
-            label={`Dismiss ${item.name}`}
+            title="关闭"
+            label={`关闭 ${item.name} 的上传状态`}
             tone="secondary"
             onPress={onDismiss}
           />
@@ -208,12 +208,12 @@ export function KnowledgeDetailScreen({
   const confirmDeleteFile = useCallback(
     (entry: KnowledgeFileEntry) => {
       Alert.alert(
-        'Remove this document?',
-        `"${entry.name}" will be removed from the server. Its vectors are not pruned until the base is re-indexed.`,
+        '移除此文档？',
+        `服务器上的「${entry.name}」将被移除。重建知识库索引后，才会清理该文档的向量记录。`,
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: '取消', style: 'cancel' },
           {
-            text: 'Remove',
+            text: '移除',
             style: 'destructive',
             onPress: () => {
               onDeleteFile(entry.name).catch(() => {});
@@ -228,11 +228,11 @@ export function KnowledgeDetailScreen({
   const confirmDeleteBase = useCallback(() => {
     if (!kb) return;
     Alert.alert(
-      'Delete this knowledge base?',
-      `"${kb.name}" and all of its documents will be removed from the server. This cannot be undone.`,
+      '删除此知识库？',
+      `服务器上的「${kb.name}」及其中的全部文档将被永久删除。`,
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: onDeleteBase },
+        { text: '取消', style: 'cancel' },
+        { text: '删除', style: 'destructive', onPress: onDeleteBase },
       ],
     );
   }, [kb, onDeleteBase]);
@@ -255,18 +255,18 @@ export function KnowledgeDetailScreen({
             numberOfLines={1}
             style={[styles.title, { color: theme.text }]}
           >
-            {kb?.name ?? 'Knowledge base'}
+            {kb?.name ?? '知识库'}
           </Text>
           <Text style={[styles.hint, { color: theme.muted }]}>
             {kb
-              ? `${kb.documentCount} document${kb.documentCount === 1 ? '' : 's'}${kb.provider ? ` · ${kb.provider}` : ''}`
-              : 'Loading…'}
+              ? `${kb.documentCount} 份文档${kb.provider ? ` · ${kb.provider}` : ''}`
+              : '正在加载…'}
           </Text>
         </View>
         <View style={styles.headerActions}>
-          <Action title="Back" tone="secondary" onPress={onBack} />
+          <Action title="返回" tone="secondary" onPress={onBack} />
           {kb && filesReadable ? (
-            <Action title="Delete" tone="secondary" onPress={confirmDeleteBase} />
+            <Action title="删除" tone="secondary" onPress={confirmDeleteBase} />
           ) : null}
         </View>
       </View>
@@ -281,15 +281,15 @@ export function KnowledgeDetailScreen({
         <View style={styles.center} accessibilityLiveRegion="polite">
           <ActivityIndicator color={theme.primary} />
           <Text style={[styles.hint, { color: theme.muted }]}>
-            Loading this knowledge base…
+            正在加载此知识库…
           </Text>
         </View>
       ) : status === 'failed' ? (
         <View style={styles.center}>
           <Text style={[styles.hint, { color: theme.muted }]}>
-            This knowledge base could not be loaded.
+            无法加载此知识库。
           </Text>
-          <Action title="Try again" tone="secondary" onPress={onRetry} />
+          <Action title="重试" tone="secondary" onPress={onRetry} />
         </View>
       ) : (
         <FlatList
@@ -331,7 +331,7 @@ export function KnowledgeDetailScreen({
                   </View>
                   <Text style={[styles.hint, { color: theme.muted }]}>
                     {live.total > 0
-                      ? `${live.current} of ${live.total}${live.fileName ? ` · ${live.fileName}` : ''}`
+                      ? `${live.current} / ${live.total}${live.fileName ? ` · ${live.fileName}` : ''}`
                       : live.message}
                   </Text>
                 </View>
@@ -339,7 +339,7 @@ export function KnowledgeDetailScreen({
 
               {kb && state === 'failed' ? (
                 <Action
-                  title="Retry processing"
+                  title="重新处理"
                   tone="secondary"
                   busy={retrying}
                   onPress={onRetry}
@@ -348,11 +348,11 @@ export function KnowledgeDetailScreen({
 
               <View style={styles.descriptionRow}>
                 <Text style={[styles.hint, { color: theme.muted }]}>
-                  {kb?.description || 'No description yet.'}
+                  {kb?.description || '暂无描述。'}
                 </Text>
                 {filesReadable ? (
                   <Action
-                    title="Edit description"
+                    title="编辑描述"
                     tone="secondary"
                     onPress={openEditor}
                   />
@@ -361,25 +361,25 @@ export function KnowledgeDetailScreen({
 
               {filesReadable ? (
                 <View style={styles.uploadBar}>
-                  <Action title="Upload files" onPress={onPickFiles} />
+                  <Action title="上传文件" onPress={onPickFiles} />
                   <Text style={[styles.hint, { color: theme.muted }]}>
                     {policy
                       ? policy.allowAnyExtension
-                        ? `Any file up to ${formatBytes(policy.maxFileSizeBytes)}.`
-                        : `${policy.extensions.join(', ')} up to ${formatBytes(policy.maxFileSizeBytes)}.`
-                      : 'Checking which formats this server accepts…'}
+                        ? `支持任意格式，单个文件最大 ${formatBytes(policy.maxFileSizeBytes)}。`
+                        : `支持 ${policy.extensions.join('、')}，单个文件最大 ${formatBytes(policy.maxFileSizeBytes)}。`
+                      : '正在查询服务器支持的文件格式…'}
                   </Text>
                 </View>
               ) : (
                 <Text style={[styles.hint, { color: theme.muted }]}>
-                  This base is read-only for your account.
+                  你对此知识库只有读取权限。
                 </Text>
               )}
 
               {uploads.items.length ? (
                 <View style={styles.uploads}>
                   <Text style={[styles.sectionTitle, { color: theme.text }]}>
-                    Uploads
+                    上传记录
                   </Text>
                   {uploads.items.map(item => (
                     <UploadRow
@@ -394,19 +394,17 @@ export function KnowledgeDetailScreen({
               ) : null}
 
               <Text style={[styles.sectionTitle, { color: theme.text }]}>
-                Documents
+                文档
               </Text>
               <Text style={[styles.hint, { color: theme.muted }]}>
-                The server reports processing per run, not per document. “Run
-                done” means the last run finished, not that this file was
-                verified on its own.
+                服务器按批次报告进度。「本轮处理完成」表示最近一批已处理完毕，单个文件的索引结果仍需单独确认。
               </Text>
             </View>
           }
           ListEmptyComponent={
             <View style={styles.center}>
               <Text style={[styles.hint, { color: theme.muted }]}>
-                No documents yet. Upload a PDF, text or Office file to get started.
+                暂无文档。你可以上传 PDF、文本或 Office 文件。
               </Text>
             </View>
           }
@@ -429,7 +427,7 @@ export function KnowledgeDetailScreen({
                   </Text>
                   <Text style={[styles.hint, { color: theme.muted }]}>
                     {isFolder
-                      ? 'Folder'
+                      ? '文件夹'
                       : `${formatBytes(item.size)}${item.modified ? ` · ${formatModified(item.modified)}` : ''}`}
                   </Text>
                 </View>
@@ -437,12 +435,12 @@ export function KnowledgeDetailScreen({
                 {filesReadable && !isFolder ? (
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel={`Remove ${item.name}`}
+                    accessibilityLabel={`移除 ${item.name}`}
                     onPress={() => confirmDeleteFile(item)}
                     style={({ pressed }) => [styles.remove, { opacity: pressed ? 0.6 : 1 }]}
                   >
                     <Text style={[styles.removeLabel, { color: theme.error }]}>
-                      Remove
+                      移除
                     </Text>
                   </Pressable>
                 ) : null}
@@ -469,26 +467,26 @@ export function KnowledgeDetailScreen({
               accessibilityRole="header"
               style={[styles.sheetTitle, { color: theme.text }]}
             >
-              Description
+              描述
             </Text>
             <Field
-              label="Description"
+              label="描述"
               hideLabel
               value={draft}
               onChangeText={setDraft}
               multiline
               autoFocus
-              placeholder="What is this base for?"
+              placeholder="这个知识库有什么用途？"
               editable={!saving}
             />
             <View style={styles.sheetActions}>
               <Action
-                title="Cancel"
+                title="取消"
                 tone="secondary"
                 disabled={saving}
                 onPress={() => setEditing(false)}
               />
-              <Action title="Save" busy={saving} onPress={save} />
+              <Action title="保存" busy={saving} onPress={save} />
             </View>
           </View>
         </View>

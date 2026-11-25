@@ -56,7 +56,7 @@ function titleOf(session: SessionSummary): string {
   const title = session.title.trim();
   if (title) return title;
   const preview = session.lastMessage.trim().replace(/\s+/g, ' ');
-  return preview ? preview.slice(0, 60) : 'Untitled conversation';
+  return preview ? preview.slice(0, 60) : '未命名会话';
 }
 
 export function SessionsScreen({
@@ -97,7 +97,7 @@ export function SessionsScreen({
       await onRename(session.id, title);
       setEditing(null);
     } catch {
-      setActionError('Could not rename this conversation. Try again.');
+      setActionError('重命名会话失败，请重试。');
     } finally {
       setSaving(false);
     }
@@ -107,17 +107,17 @@ export function SessionsScreen({
     (session: SessionSummary) => {
       setActionError(null);
       Alert.alert(
-        'Delete conversation?',
-        `"${titleOf(session)}" and its messages will be removed from the server.`,
+        '删除此会话？',
+        `服务器上的「${titleOf(session)}」及其中的消息将被删除。`,
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: '取消', style: 'cancel' },
           {
-            text: 'Delete',
+            text: '删除',
             style: 'destructive',
             onPress: () => {
               onDelete(session.id).catch(() => {
                 setActionError(
-                  'Could not delete this conversation. Try again.',
+                  '删除会话失败，请重试。',
                 );
               });
             },
@@ -143,13 +143,13 @@ export function SessionsScreen({
             accessibilityRole="header"
             style={[styles.title, { color: theme.text }]}
           >
-            Conversations
+            历史会话
           </Text>
           <Text style={[styles.hint, { color: theme.muted }]}>
-            Stored on your DeepTutor server.
+            会话保存在你的 DeepTutor 服务器上。
           </Text>
         </View>
-        <Action title="New" onPress={onNewChat} />
+        <Action title="新建" onPress={onNewChat} />
       </View>
 
       {actionError ? (
@@ -161,7 +161,7 @@ export function SessionsScreen({
         <View style={styles.noticeRow}>
           <ErrorNotice message={error} />
           {status === 'failed' ? (
-            <Action title="Try again" tone="secondary" onPress={onRetry} />
+            <Action title="重试" tone="secondary" onPress={onRetry} />
           ) : null}
         </View>
       ) : null}
@@ -170,7 +170,7 @@ export function SessionsScreen({
         <View style={styles.center} accessibilityLiveRegion="polite">
           <ActivityIndicator color={theme.primary} />
           <Text style={[styles.hint, { color: theme.muted }]}>
-            Loading conversations…
+            正在加载会话…
           </Text>
         </View>
       ) : (
@@ -193,10 +193,10 @@ export function SessionsScreen({
             status === 'failed' ? null : (
               <View style={styles.center}>
                 <Text style={[styles.emptyTitle, { color: theme.text }]}>
-                  No conversations yet
+                  暂无历史会话
                 </Text>
                 <Text style={[styles.hint, { color: theme.muted }]}>
-                  Ask a question and it will appear here.
+                  发送消息后，会话会出现在这里。
                 </Text>
               </View>
             )
@@ -243,26 +243,25 @@ export function SessionsScreen({
                     </Text>
                     {item.messageCount ? (
                       <Text style={[styles.hint, { color: theme.muted }]}>
-                        {item.messageCount} message
-                        {item.messageCount === 1 ? '' : 's'}
+                        {item.messageCount} 条消息
                       </Text>
                     ) : null}
                     {live ? (
                       <Text style={[styles.live, { color: theme.primary }]}>
-                        {busySessionId === item.id ? 'Opening…' : 'Running'}
+                        {busySessionId === item.id ? '正在打开…' : '进行中'}
                       </Text>
                     ) : null}
                   </View>
                 </View>
                 <View style={styles.rowActions}>
                   <Action
-                    title="Rename"
+                    title="重命名"
                     tone="secondary"
                     disabled={Boolean(busySessionId)}
                     onPress={() => openRename(item)}
                   />
                   <Action
-                    title="Delete"
+                    title="删除"
                     tone="secondary"
                     disabled={Boolean(busySessionId)}
                     onPress={() => confirmDelete(item)}
@@ -291,10 +290,10 @@ export function SessionsScreen({
               accessibilityRole="header"
               style={[styles.emptyTitle, { color: theme.text }]}
             >
-              Rename conversation
+              重命名会话
             </Text>
             <Field
-              label="Title"
+              label="标题"
               value={draft}
               onChangeText={setDraft}
               autoFocus
@@ -304,12 +303,12 @@ export function SessionsScreen({
             />
             <View style={styles.dialogActions}>
               <Action
-                title="Cancel"
+                title="取消"
                 tone="secondary"
                 onPress={() => setEditing(null)}
               />
               <Action
-                title="Save"
+                title="保存"
                 disabled={!draft.trim()}
                 busy={saving}
                 onPress={saveRename}

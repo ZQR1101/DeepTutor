@@ -133,7 +133,7 @@ test('a failure explains itself, preferring the run’s own message', () => {
   expect(failureReason(null, 'Embedding model missing')).toBe(
     'Embedding model missing',
   );
-  expect(failureReason(null, '')).toBe('The server did not say why it failed.');
+  expect(failureReason(null, '')).toBe('服务器未提供失败原因。');
 });
 
 test('a file row never claims a readiness the run cannot prove', () => {
@@ -152,7 +152,7 @@ test('a file row never claims a readiness the run cannot prove', () => {
   });
   expect(fileState(finished, 'chapter 1.pdf')).toBe('run_done');
   expect(fileState(finished, 'chapter 1.pdf')).not.toBe('ready');
-  expect(stateLabel('run_done')).toBe('Run done');
+  expect(stateLabel('run_done')).toBe('本轮处理完成');
 
   // A failed run names the file it gave up on; the others are unknown.
   const failed = base({
@@ -163,14 +163,14 @@ test('a file row never claims a readiness the run cannot prove', () => {
   expect(fileState(failed, 'other.pdf')).toBe('unknown');
 
   expect(fileState(base({ status: 'needs_reindex' }), 'a.pdf')).toBe('stale');
-  expect(stateLabel('stale')).toBe('Re-index needed');
+  expect(stateLabel('stale')).toBe('需要重建索引');
   // A revoked base yields nothing to say about its files.
   expect(fileState(base({ available: false }), 'a.pdf')).toBe('unknown');
 });
 
 test('labels are stable copy rather than raw protocol strings', () => {
-  expect(stateLabel('needs_reindex')).toBe('Re-index needed');
-  expect(stateLabel('parsing')).toBe('Parsing');
+  expect(stateLabel('needs_reindex')).toBe('需要重建索引');
+  expect(stateLabel('parsing')).toBe('解析中');
 });
 
 test('the picker opens with usable bases first, then by name', () => {

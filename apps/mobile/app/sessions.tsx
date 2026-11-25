@@ -39,8 +39,8 @@ export default function SessionsRoute() {
         setOpenError(
           gone
             ? snapshot.recovery?.message ??
-                'This conversation no longer exists on the server.'
-            : snapshot.error ?? 'Could not open this conversation on the server.',
+                '服务器上已没有此会话。'
+            : snapshot.error ?? '无法打开服务器上的此会话。',
         );
         // A conversation the server no longer has must not linger in the index.
         if (gone) refreshList();

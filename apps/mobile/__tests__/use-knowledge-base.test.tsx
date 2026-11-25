@@ -230,7 +230,7 @@ test('a base that fails to load says so and can be tried again', async () => {
   );
   await waitFor(() => expect(result.current.status).toBe('failed'));
   expect(result.current.error).toBe(
-    'This knowledge base no longer exists on the server.',
+    '服务器上已没有此知识库。',
   );
   await act(async () => {
     await result.current.refresh();
@@ -255,7 +255,7 @@ test('a failed refresh keeps the record that is already open', async () => {
   expect(result.current.status).toBe('ready');
   expect(result.current.kb?.name).toBe('physics');
   expect(result.current.error).toBe(
-    'Could not reach the server. Check your connection.',
+    '无法连接服务器，请检查网络。',
   );
 });
 
@@ -297,7 +297,7 @@ test('a refusal without an explanation still says what is known, not a guess', a
     await result.current.retry();
   });
   expect(result.current.error).toBe(
-    'The server refused this change in the base’s current state.',
+    '此知识库当前无法执行这项修改。',
   );
   expect(result.current.retrying).toBe(false);
 });
@@ -348,7 +348,7 @@ test('the description saves on the server before the screen agrees', async () =>
   // The old copy stays on screen when the server refuses the change.
   expect(result.current.kb?.description).toBe('Mechanics');
   expect(result.current.error).toBe(
-    'This knowledge base is read-only for your account.',
+    '你对此知识库只有读取权限。',
   );
 });
 
@@ -390,7 +390,7 @@ test('a refused deletion leaves the document in place and explains why', async (
   });
   expect(result.current.files).toHaveLength(1);
   expect(result.current.error).toBe(
-    'This knowledge base is read-only for your account.',
+    '你对此知识库只有读取权限。',
   );
 });
 

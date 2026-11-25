@@ -27,10 +27,10 @@ export type KnowledgePickerProps = {
 };
 
 function reasonFor(base: KnowledgeBaseSummary): string | null {
-  if (base.available === false) return 'This base is no longer available to you.';
+  if (base.available === false) return '你已无法访问此知识库。';
   const state = documentState(base);
   if (state === 'ready') return null;
-  return `Not ready — ${stateLabel(state).toLowerCase()}.`;
+  return `暂不可用（${stateLabel(state)}）`;
 }
 
 /** A server handle is not something to show a learner. */
@@ -89,10 +89,10 @@ export function KnowledgePicker({
             accessibilityRole="header"
             style={[styles.title, { color: theme.text }]}
           >
-            Knowledge bases
+            知识库
           </Text>
           <Text style={[styles.hint, { color: theme.muted }]}>
-            The next question is answered with these documents.
+            下一次回答可以参考所选知识库的文档。
           </Text>
 
           {error ? <ErrorNotice message={error} /> : null}
@@ -101,7 +101,7 @@ export function KnowledgePicker({
             <View style={styles.center} accessibilityLiveRegion="polite">
               <ActivityIndicator color={theme.primary} />
               <Text style={[styles.hint, { color: theme.muted }]}>
-                Loading knowledge bases…
+                正在加载知识库…
               </Text>
             </View>
           ) : (
@@ -113,8 +113,8 @@ export function KnowledgePicker({
               ListEmptyComponent={
                 <Text style={[styles.hint, { color: theme.muted }]}>
                   {status === 'failed'
-                    ? 'Could not load your knowledge bases.'
-                    : 'No knowledge bases yet. Create one to answer from your own documents.'}
+                    ? '无法加载知识库。'
+                    : '暂无知识库。新建知识库后即可基于自己的文档提问。'}
                 </Text>
               }
               renderItem={({ item }) => {
@@ -123,11 +123,11 @@ export function KnowledgePicker({
                 const checked = chosen.has(item.ref);
                 const boxBackground = checked ? theme.primary : 'transparent';
                 const detail = !item.base
-                  ? 'This base is no longer on the server. Tap to remove it.'
+                  ? '此知识库已不存在，点按即可取消选择。'
                   : disabled
                     ? reason
-                    : `${item.base.documentCount} document${item.base.documentCount === 1 ? '' : 's'}${
-                        item.base.assigned ? ' · shared with you' : ''
+                    : `${item.base.documentCount} 份文档${
+                        item.base.assigned ? ' · 与你共享' : ''
                       }`;
                 return (
                   <Pressable
@@ -176,11 +176,11 @@ export function KnowledgePicker({
           )}
 
           <View style={styles.actions}>
-            <Action title="Manage" tone="secondary" onPress={onManage} />
+            <Action title="管理" tone="secondary" onPress={onManage} />
             {status === 'failed' ? (
-              <Action title="Retry" tone="secondary" onPress={onRefresh} />
+              <Action title="重试" tone="secondary" onPress={onRefresh} />
             ) : null}
-            <Action title="Done" onPress={onClose} />
+            <Action title="完成" onPress={onClose} />
           </View>
         </View>
       </View>

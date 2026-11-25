@@ -16,7 +16,7 @@ export interface ChatExchange {
   retryable: boolean;
 }
 
-const DEFAULT_FAILURE = 'This response did not finish.';
+const DEFAULT_FAILURE = '本次回复未完成。';
 
 /**
  * A stable render key per row. The server normally supplies one; when it does

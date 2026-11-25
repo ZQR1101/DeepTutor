@@ -62,31 +62,31 @@ interface UploadOptions {
 }
 
 const DESTINATION_CHANGED =
-  'The upload destination changed. Pick this file again if you still need it.';
+  '上传目标已更改。如需上传，请重新选择文件。';
 
 function uploadErrorCopy(error: unknown): string {
   if (error instanceof ApiError) {
-    if (error.kind === 'unauthorized') return 'Sign in again to upload files.';
+    if (error.kind === 'unauthorized') return '请重新登录后上传文件。';
     if (error.kind === 'timeout') {
-      return 'The upload stopped making progress. Check your connection and retry.';
+      return '上传长时间没有进展，请检查网络后重试。';
     }
     if (error.kind === 'network') {
-      return 'Could not reach the server. Check your connection.';
+      return '无法连接服务器，请检查网络。';
     }
     if (error.kind === 'redirect') {
-      return 'The server redirected the upload, so it was stopped. Check the server address.';
+      return '服务器重定向了上传，上传已停止。请检查服务器地址。';
     }
     // A refusal the server explained is shown in its own words: it can name the
     // real cause (a size limit, an unconfigured embedding model) where a status
     // code cannot.
     if (error.detail) return error.detail;
-    if (error.status === 413) return 'The server rejected this file as too large.';
+    if (error.status === 413) return '文件过大，服务器拒绝接收。';
     if (error.status === 409) {
-      return 'The server refused this upload in the base’s current state.';
+      return '此知识库当前无法接收上传。';
     }
-    if (error.status === 404) return 'This knowledge base no longer exists.';
+    if (error.status === 404) return '此知识库已不存在。';
   }
-  return 'The upload failed. Try again.';
+  return '上传失败，请重试。';
 }
 
 function newId(): string {
@@ -232,7 +232,7 @@ export function useUploads({ destination, policy, onUploaded }: UploadOptions) {
             failure =
               error instanceof ApiError
                 ? error
-                : new ApiError('network', 'The upload failed.');
+                : new ApiError('network', '上传失败。');
           }
 
           if (active.current?.id === id) active.current = null;
@@ -375,7 +375,7 @@ export function useUploads({ destination, policy, onUploaded }: UploadOptions) {
           status: 'failed',
           loaded: 0,
           total: file.size ?? 0,
-          error: 'This screen is not connected to a server.',
+          error: '当前尚未连接服务器。',
           retryable: false,
           uri: '',
           mimeType: file.mimeType,

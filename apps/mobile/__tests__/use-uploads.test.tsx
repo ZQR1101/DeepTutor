@@ -104,7 +104,7 @@ test('a refused file never reaches the network, says why and releases its copy',
   expect(refused).toMatchObject({
     status: 'failed',
     retryable: false,
-    error: 'This server does not accept .exe files.',
+    error: '此服务器不支持 .exe 文件。',
   });
   // A refused file is never sent, so its cache copy has no further use.
   expect(discard).toHaveBeenCalledWith('file:///cache/malware.exe');
@@ -179,7 +179,7 @@ test('a failed transfer keeps the file so it can be retried', async () => {
   expect(result.current.items[0]).toMatchObject({
     status: 'failed',
     retryable: true,
-    error: 'The server rejected this file as too large.',
+    error: '文件过大，服务器拒绝接收。',
   });
   // The copy is kept: retrying must not need the learner to pick it again.
   expect(discard).not.toHaveBeenCalled();
@@ -313,7 +313,7 @@ test('without a destination nothing is queued and no copy is kept', async () => 
   expect(result.current.items[0]).toMatchObject({
     status: 'failed',
     retryable: false,
-    error: 'This screen is not connected to a server.',
+    error: '当前尚未连接服务器。',
   });
   expect(discard).toHaveBeenCalledWith('file:///cache/a.pdf');
 });
@@ -339,7 +339,7 @@ test('changing the base retires the queue instead of re-addressing it', async ()
     'cancelled',
     'cancelled',
   ]);
-  expect(result.current.items[0].error).toContain('destination changed');
+  expect(result.current.items[0].error).toContain('上传目标已更改');
   expect(discard).toHaveBeenCalledWith('file:///cache/a.pdf');
   expect(discard).toHaveBeenCalledWith('file:///cache/b.pdf');
 

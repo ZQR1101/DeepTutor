@@ -77,7 +77,7 @@ export class AuthService {
       if (error instanceof ApiError && error.kind === 'unauthorized') {
         throw new ApiError(
           'unauthorized',
-          'Check your username and password.',
+          '请检查用户名和密码。',
           401,
         );
       }
@@ -89,7 +89,7 @@ export class AuthService {
     if (!status.authenticated) {
       throw new ApiError(
         'unauthorized',
-        'The server could not establish a session.',
+        '服务器未能建立登录会话。',
         401,
       );
     }

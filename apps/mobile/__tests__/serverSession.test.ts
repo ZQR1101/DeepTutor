@@ -82,12 +82,12 @@ test('connect persists only the server origin and login gates the chat route', a
   expect(storage.write.mock.calls).toEqual([[null], [first]]);
 
   auth.login.mockRejectedValueOnce(
-    new ApiError('unauthorized', 'Check your username and password.', 401),
+    new ApiError('unauthorized', '请检查用户名和密码。', 401),
   );
   await session.login('demo', 'wrong');
   expect(session.getSnapshot()).toMatchObject({
     phase: 'login',
-    error: 'Check your username and password.',
+    error: '请检查用户名和密码。',
   });
   await session.login('demo', 'right');
   expect(session.getSnapshot()).toMatchObject({ phase: 'chat', error: null });
@@ -140,7 +140,7 @@ test('a failed cookie clear blocks a server switch before authentication', async
   expect(session.getSnapshot()).toMatchObject({
     phase: 'connect',
     origin: null,
-    error: 'Could not clear the saved session. Try again.',
+    error: '无法清除已保存的登录状态，请重试。',
   });
 });
 
@@ -221,7 +221,7 @@ test.each(['logout', 'disconnect'] as const)(
     expect(auth.logout).toHaveBeenCalledTimes(action === 'logout' ? 1 : 0);
     expect(session.getSnapshot()).toMatchObject({
       phase: action === 'logout' ? 'login' : 'connect',
-      error: 'Could not update the saved server address.',
+      error: '无法更新已保存的服务器地址。',
     });
   },
 );

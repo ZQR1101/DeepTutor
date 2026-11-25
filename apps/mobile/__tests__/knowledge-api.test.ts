@@ -311,22 +311,22 @@ test('the upload policy is the server’s, with extensions normalised', async ()
 
 test('failures are explained in terms a learner can act on', () => {
   expect(messageFor(new ApiError('unauthorized', 'x', 401))).toBe(
-    'Sign in again to manage your knowledge bases.',
+    '请重新登录后管理知识库。',
   );
   expect(messageFor(new ApiError('timeout', 'x'))).toBe(
-    'The server took too long to answer. Try again.',
+    '服务器响应超时，请重试。',
   );
   expect(messageFor(new ApiError('network', 'x'))).toBe(
-    'Could not reach the server. Check your connection.',
+    '无法连接服务器，请检查网络。',
   );
   expect(messageFor(new ApiError('http', 'x', 404))).toBe(
-    'This knowledge base no longer exists on the server.',
+    '服务器上已没有此知识库。',
   );
   expect(messageFor(new ApiError('http', 'x', 409))).toBe(
-    'The server refused this change in the base’s current state.',
+    '此知识库当前无法执行这项修改。',
   );
   expect(messageFor(new ApiError('http', 'x', 403))).toBe(
-    'This knowledge base is read-only for your account.',
+    '你对此知识库只有读取权限。',
   );
   // A refusal the server explained is repeated verbatim rather than summarised
   // into a cause this client cannot verify.
@@ -343,7 +343,7 @@ test('failures are explained in terms a learner can act on', () => {
     'No embedding model is configured. Set up the embedding profile in Settings before re-indexing.',
   );
   expect(messageFor(new Error('boom'))).toBe(
-    'The server could not complete that request.',
+    '服务器未能完成请求。',
   );
 });
 

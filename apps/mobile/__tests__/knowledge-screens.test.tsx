@@ -67,7 +67,7 @@ function file(name: string, overrides: Partial<KnowledgeFileEntry> = {}): Knowle
 function progress(overrides: Partial<KnowledgeProgress> = {}): KnowledgeProgress {
   return {
     stage: 'processing_file',
-    message: 'Parsing',
+    message: '解析中',
     current: 1,
     total: 2,
     percent: 50,
@@ -99,25 +99,25 @@ function list(overrides: Partial<React.ComponentProps<typeof KnowledgeListScreen
 
 test('the list says it is loading rather than showing an empty catalogue', () => {
   list({ status: 'loading' });
-  expect(screen.getByText('Loading knowledge bases…')).toBeTruthy();
+  expect(screen.getByText('正在加载知识库…')).toBeTruthy();
 });
 
 test('an empty catalogue invites the first base instead of looking broken', () => {
   list();
-  expect(screen.getByText('No knowledge bases yet')).toBeTruthy();
+  expect(screen.getByText('暂无知识库')).toBeTruthy();
 });
 
 test('a failed first load offers a retry and keeps the reason', () => {
   const onRetry = jest.fn();
   list({
     status: 'failed',
-    error: 'Could not reach the server. Check your connection.',
+    error: '无法连接服务器，请检查网络。',
     onRetry,
   });
   expect(
-    screen.getByText('Could not reach the server. Check your connection.'),
+    screen.getByText('无法连接服务器，请检查网络。'),
   ).toBeTruthy();
-  fireEvent.press(button('Try again'));
+  fireEvent.press(button('重试'));
   expect(onRetry).toHaveBeenCalledTimes(1);
 });
 
@@ -135,8 +135,8 @@ test('a row says how much is in the base and whether it is shared or read-only',
       }),
     ],
   });
-  expect(screen.getByText('2 documents')).toBeTruthy();
-  expect(screen.getByText('1 document · shared with you · read-only')).toBeTruthy();
+  expect(screen.getByText('2 份文档')).toBeTruthy();
+  expect(screen.getByText('1 份文档 · 与你共享 · 只读')).toBeTruthy();
 });
 
 test('opening a row passes the handle the server routes on', () => {
@@ -150,30 +150,30 @@ test('creating a base needs a name and keeps the sheet open when refused', async
   const onCreate = jest.fn(async () => 'This knowledge base already exists.');
   list({ onCreate });
 
-  fireEvent.press(button('New'));
-  expect(button('Create').props.accessibilityState.disabled).toBe(true);
+  fireEvent.press(button('新建'));
+  expect(button('创建').props.accessibilityState.disabled).toBe(true);
 
-  fireEvent.changeText(screen.getByLabelText('Name'), '  biology  ');
+  fireEvent.changeText(screen.getByLabelText('名称'), '  biology  ');
   await act(async () => {
-    fireEvent.press(button('Create'));
+    fireEvent.press(button('创建'));
   });
   expect(onCreate).toHaveBeenCalledWith('biology');
   // The name is kept so it can be corrected rather than retyped.
   expect(screen.getByText('This knowledge base already exists.')).toBeTruthy();
-  expect(screen.getByLabelText('Name')).toBeTruthy();
+  expect(screen.getByLabelText('名称')).toBeTruthy();
 });
 
 test('a created base closes the sheet', async () => {
   const onCreate = jest.fn(async () => null);
   list({ onCreate });
 
-  fireEvent.press(button('New'));
-  fireEvent.changeText(screen.getByLabelText('Name'), 'biology');
+  fireEvent.press(button('新建'));
+  fireEvent.changeText(screen.getByLabelText('名称'), 'biology');
   await act(async () => {
-    fireEvent.press(button('Create'));
+    fireEvent.press(button('创建'));
   });
   expect(onCreate).toHaveBeenCalledWith('biology');
-  expect(screen.queryByLabelText('Name')).toBeNull();
+  expect(screen.queryByLabelText('名称')).toBeNull();
 });
 
 function detail(
@@ -217,7 +217,7 @@ function detail(
 test('the detail header names the base and what it holds', () => {
   detail();
   expect(screen.getByText('physics')).toBeTruthy();
-  expect(screen.getByText('2 documents · llamaindex')).toBeTruthy();
+  expect(screen.getByText('2 份文档 · llamaindex')).toBeTruthy();
   expect(screen.getByText('a.pdf')).toBeTruthy();
 });
 
@@ -226,14 +226,14 @@ test('removing a document asks first and warns that vectors remain', async () =>
   const onDeleteFile = jest.fn(async () => true);
   detail({ onDeleteFile });
 
-  fireEvent.press(screen.getByLabelText('Remove a.pdf'));
+  fireEvent.press(screen.getByLabelText('移除 a.pdf'));
   expect(alert).toHaveBeenCalledTimes(1);
   const [title, message, actions] = alert.mock.calls[0];
-  expect(title).toBe('Remove this document?');
-  expect(message).toContain('vectors are not pruned');
+  expect(title).toBe('移除此文档？');
+  expect(message).toContain('向量记录');
   expect(onDeleteFile).not.toHaveBeenCalled();
 
-  const confirm = actions?.find(action => action.text === 'Remove');
+  const confirm = actions?.find(action => action.text === '移除');
   confirm?.onPress?.();
   await waitFor(() => expect(onDeleteFile).toHaveBeenCalledWith('a.pdf'));
 });
@@ -242,9 +242,9 @@ test('deleting the base asks first and then leaves it to the caller', () => {
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   const onDeleteBase = jest.fn();
   detail({ onDeleteBase });
-  fireEvent.press(button('Delete'));
-  expect(alert.mock.calls[0][0]).toBe('Delete this knowledge base?');
-  alert.mock.calls[0][2]?.find(action => action.text === 'Delete')?.onPress?.();
+  fireEvent.press(button('删除'));
+  expect(alert.mock.calls[0][0]).toBe('删除此知识库？');
+  alert.mock.calls[0][2]?.find(action => action.text === '删除')?.onPress?.();
   expect(onDeleteBase).toHaveBeenCalledTimes(1);
 });
 
@@ -253,10 +253,10 @@ test('a read-only base hides every write action and says why', () => {
     kb: base({ readOnly: true, assigned: true }),
     policy: null,
   });
-  expect(screen.queryByText('Upload files')).toBeNull();
-  expect(screen.queryByText('Delete')).toBeNull();
-  expect(screen.queryByText('Edit description')).toBeNull();
-  expect(screen.getByText('This base is read-only for your account.')).toBeTruthy();
+  expect(screen.queryByText('上传文件')).toBeNull();
+  expect(screen.queryByText('删除')).toBeNull();
+  expect(screen.queryByText('编辑描述')).toBeNull();
+  expect(screen.getByText('你对此知识库只有读取权限。')).toBeTruthy();
 });
 
 test('a failed run shows the parser’s reason and offers a retry', () => {
@@ -270,7 +270,7 @@ test('a failed run shows the parser’s reason and offers a retry', () => {
     onRetry,
   });
   expect(screen.getByText('No text layer in this PDF')).toBeTruthy();
-  fireEvent.press(button('Retry processing'));
+  fireEvent.press(button('重新处理'));
   expect(onRetry).toHaveBeenCalledTimes(1);
 });
 
@@ -280,14 +280,14 @@ test('a live run shows the server’s own percentage and file', () => {
   });
   const bar = screen.getByRole('progressbar');
   expect(bar.props.accessibilityValue).toEqual({ min: 0, max: 100, now: 50 });
-  expect(screen.getByText('1 of 2 · a.pdf')).toBeTruthy();
+  expect(screen.getByText('1 / 2 · a.pdf')).toBeTruthy();
 });
 
 test('an index older than its documents says so instead of claiming work', () => {
   detail({ kb: base({ status: 'needs_reindex' }) });
   expect(
     screen.getByText(
-      'The index is older than its documents. Rebuild it from the web app to cite them.',
+      '文档已更新，请在网页版重建索引后再引用。',
     ),
   ).toBeTruthy();
 });
@@ -297,10 +297,10 @@ test('a document row says the run finished instead of claiming the file is ready
     kb: base({ status: 'ready', progress: progress({ stage: 'completed' }) }),
   });
   // The base itself is ready…
-  expect(screen.getByText('Ready')).toBeTruthy();
+  expect(screen.getByText('就绪')).toBeTruthy();
   // …but the server reports per run, so the file row says exactly that.
-  expect(screen.getByText('Run done')).toBeTruthy();
-  expect(screen.getByText(/last run finished/)).toBeTruthy();
+  expect(screen.getByText('本轮处理完成')).toBeTruthy();
+  expect(screen.getByText(/最近一批已处理完毕/)).toBeTruthy();
 });
 
 test('only the file the parser names is shown as parsing', () => {
@@ -308,9 +308,9 @@ test('only the file the parser names is shown as parsing', () => {
     kb: base({ status: 'processing', progress: progress({ message: '' }) }),
     files: [file('a.pdf'), file('b.pdf')],
   });
-  expect(screen.getByText('Parsing')).toBeTruthy();
+  expect(screen.getByText('解析中')).toBeTruthy();
   // The other file is part of the run but is not being read right now.
-  expect(screen.getByText('In progress')).toBeTruthy();
+  expect(screen.getByText('处理中')).toBeTruthy();
 });
 
 test('upload rows describe their own progress, cancel and retry', async () => {
@@ -334,7 +334,7 @@ test('upload rows describe their own progress, cancel and retry', async () => {
       status: 'failed',
       loaded: 0,
       total: 10,
-      error: 'The server rejected this file as too large.',
+      error: '文件过大，服务器拒绝接收。',
       retryable: true,
       uri: 'file:///bad.pdf',
       mimeType: 'application/pdf',
@@ -354,26 +354,26 @@ test('upload rows describe their own progress, cancel and retry', async () => {
   ];
   const { uploads } = detail({ uploads: { items, cancel: jest.fn(), retry: jest.fn(), dismiss: jest.fn() } });
 
-  expect(screen.getByText('25% · 50 B of 200 B')).toBeTruthy();
-  expect(screen.getByText('The server rejected this file as too large.')).toBeTruthy();
-  expect(screen.getByText('Uploaded. The server is processing it.')).toBeTruthy();
+  expect(screen.getByText('25% · 50 B / 200 B')).toBeTruthy();
+  expect(screen.getByText('文件过大，服务器拒绝接收。')).toBeTruthy();
+  expect(screen.getByText('上传完成，服务器正在处理。')).toBeTruthy();
 
-  fireEvent.press(button('Cancel big.pdf'));
+  fireEvent.press(button('取消上传 big.pdf'));
   expect(uploads.cancel).toHaveBeenCalledWith('u1');
-  fireEvent.press(button('Retry bad.pdf'));
+  fireEvent.press(button('重试上传 bad.pdf'));
   expect(uploads.retry).toHaveBeenCalledWith('u2');
-  fireEvent.press(button('Dismiss done.pdf'));
+  fireEvent.press(button('关闭 done.pdf 的上传状态'));
   expect(uploads.dismiss).toHaveBeenCalledWith('u3');
 });
 
 test('the description is edited in a sheet and saved to the server', async () => {
   const onSaveDescription = jest.fn(async () => true);
   detail({ onSaveDescription });
-  fireEvent.press(button('Edit description'));
-  fireEvent.changeText(screen.getByLabelText('Description'), '  Waves  ');
-  fireEvent.press(button('Save'));
+  fireEvent.press(button('编辑描述'));
+  fireEvent.changeText(screen.getByLabelText('描述'), '  Waves  ');
+  fireEvent.press(button('保存'));
   await waitFor(() => expect(onSaveDescription).toHaveBeenCalledWith('Waves'));
-  expect(screen.queryByLabelText('Description')).toBeNull();
+  expect(screen.queryByLabelText('描述')).toBeNull();
 });
 
 test('the picker refuses a base whose index is not ready and explains it', () => {
@@ -401,9 +401,9 @@ test('the picker refuses a base whose index is not ready and explains it', () =>
 
   const busy = screen.getByLabelText('bio');
   expect(busy.props.accessibilityState).toEqual({ checked: false, disabled: true });
-  expect(screen.getByText('Not ready — queued.')).toBeTruthy();
+  expect(screen.getByText('暂不可用（排队中）')).toBeTruthy();
 
-  expect(screen.getByText('This base is no longer available to you.')).toBeTruthy();
+  expect(screen.getByText('你已无法访问此知识库。')).toBeTruthy();
 
   fireEvent.press(ready);
   expect(onToggle).toHaveBeenCalledWith('user:kb:physics');
@@ -430,7 +430,7 @@ test('a selection the server no longer lists can still be removed', () => {
   const stale = screen.getByLabelText('deleted');
   expect(stale.props.accessibilityState).toEqual({ checked: true, disabled: false });
   expect(
-    screen.getByText('This base is no longer on the server. Tap to remove it.'),
+    screen.getByText('此知识库已不存在，点按即可取消选择。'),
   ).toBeTruthy();
   fireEvent.press(stale);
   expect(onToggle).toHaveBeenCalledWith('user:kb:deleted');
@@ -445,16 +445,16 @@ test('the picker offers management and a retry only when loading failed', () => 
       bases={[]}
       selected={[]}
       status="failed"
-      error="Could not reach the server."
+      error="无法连接服务器。"
       onToggle={jest.fn()}
       onClose={jest.fn()}
       onRefresh={onRefresh}
       onManage={onManage}
     />,
   );
-  expect(screen.getByText('Could not reach the server.')).toBeTruthy();
-  fireEvent.press(button('Manage'));
-  fireEvent.press(button('Retry'));
+  expect(screen.getByText('无法连接服务器。')).toBeTruthy();
+  fireEvent.press(button('管理'));
+  fireEvent.press(button('重试'));
   expect(onManage).toHaveBeenCalledTimes(1);
   expect(onRefresh).toHaveBeenCalledTimes(1);
 });

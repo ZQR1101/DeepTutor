@@ -130,10 +130,10 @@ export class ApiClient {
         path,
       )
     ) {
-      throw new ApiError('network', 'Invalid DeepTutor API path.');
+      throw new ApiError('network', 'DeepTutor 接口地址无效。');
     }
     if (signal?.aborted) {
-      throw new ApiError('aborted', 'The request was cancelled.');
+      throw new ApiError('aborted', '请求已取消。');
     }
     const controller = new AbortController();
     let rejectCancellation: (reason: ApiError) => void = () => {};
@@ -145,11 +145,11 @@ export class ApiClient {
       controller.abort();
     };
     const abort = () =>
-      cancel(new ApiError('aborted', 'The request was cancelled.'));
+      cancel(new ApiError('aborted', '请求已取消。'));
     signal?.addEventListener('abort', abort);
     const timer = setTimeout(
       () =>
-        cancel(new ApiError('timeout', 'The server took too long to respond.')),
+        cancel(new ApiError('timeout', '服务器响应超时。')),
       timeoutMs,
     );
 
@@ -181,7 +181,7 @@ export class ApiClient {
         signal,
       });
     } catch {
-      throw new ApiError('network', 'Could not reach the DeepTutor server.');
+      throw new ApiError('network', '无法连接 DeepTutor 服务器。');
     }
     if (
       response.redirected ||
@@ -189,12 +189,12 @@ export class ApiClient {
     ) {
       throw new ApiError(
         'redirect',
-        'Enter the final address of the DeepTutor server.',
+        '请输入 DeepTutor 服务器的最终地址。',
         response.status,
       );
     }
     if (response.status === 401) {
-      throw new ApiError('unauthorized', 'Sign-in is required.', 401);
+      throw new ApiError('unauthorized', '请先登录。', 401);
     }
     if (!response.ok) {
       // Reading the body is best effort: a proxy may answer with HTML, and a
@@ -207,7 +207,7 @@ export class ApiClient {
       }
       throw new ApiError(
         'http',
-        `The server returned HTTP ${response.status}.`,
+        `服务器返回 HTTP ${response.status}。`,
         response.status,
         detail,
       );
@@ -217,7 +217,7 @@ export class ApiClient {
     } catch {
       throw new ApiError(
         'invalid-response',
-        'The server did not return a valid DeepTutor response.',
+        '服务器未返回有效的 DeepTutor 响应。',
       );
     }
   }

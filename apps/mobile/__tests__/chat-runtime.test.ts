@@ -248,7 +248,7 @@ test('clears a rejected durable start and recovers from a missing admission resp
   });
   expect(runtime.getSnapshot()).toMatchObject({
     status: 'failed',
-    error: 'The server rejected the request.',
+    error: '服务器拒绝了请求。',
   });
   sockets[1].open();
   expect(sockets[1].sent).toHaveLength(0);
@@ -256,7 +256,7 @@ test('clears a rejected durable start and recovers from a missing admission resp
   jest.advanceTimersByTime(30_000);
   expect(runtime.getSnapshot()).toMatchObject({
     status: 'failed',
-    error: expect.stringContaining('did not confirm'),
+    error: expect.stringContaining('未确认'),
   });
   sockets[2].open();
   expect(sockets[2].sent).toHaveLength(0);
@@ -275,7 +275,7 @@ test('terminal errors release the composer without waiting for DONE', () => {
   );
   expect(runtime.getSnapshot()).toMatchObject({
     status: 'failed',
-    error: 'The server could not finish the response.',
+    error: '服务器未能完成回复。',
   });
   expect(runtime.send('Next')).toBe(true);
   runtime.stop();
@@ -306,7 +306,7 @@ test('makes a waiting prompt actionable again if reply or cancellation loses its
   expect(runtime.getSnapshot()).toMatchObject({
     status: 'waiting_for_input',
     waitingPrompt: 'What topic?',
-    error: expect.stringContaining('confirm your reply'),
+    error: expect.stringContaining('确认回复'),
   });
 
   const stop = runtime.cancel();
@@ -316,7 +316,7 @@ test('makes a waiting prompt actionable again if reply or cancellation loses its
   expect(runtime.getSnapshot()).toMatchObject({
     status: 'waiting_for_input',
     waitingPrompt: 'What topic?',
-    error: expect.stringContaining('confirm the stop request'),
+    error: expect.stringContaining('确认停止请求'),
   });
 
   const retry = runtime.cancel();
@@ -331,7 +331,7 @@ test('makes a waiting prompt actionable again if reply or cancellation loses its
   expect(runtime.getSnapshot()).toMatchObject({
     status: 'waiting_for_input',
     waitingPrompt: 'What topic?',
-    error: expect.stringContaining('Try Stop again'),
+    error: expect.stringContaining('再次点击停止'),
   });
   runtime.stop();
 });
@@ -356,7 +356,7 @@ test('replays retryable subscription failures on the same cursor, then ends a ma
   socket.frame(failure);
   expect(runtime.getSnapshot()).toMatchObject({
     status: 'waiting_for_input',
-    error: 'The connection could not recover this response.',
+    error: '重新连接后仍无法恢复此回复。',
   });
   jest.advanceTimersByTime(500);
   const reopened = sockets[1];
@@ -376,7 +376,7 @@ test('replays retryable subscription failures on the same cursor, then ends a ma
   expect(runtime.getSnapshot()).toMatchObject({
     status: 'failed',
     waitingPrompt: null,
-    error: 'The connection could not recover this response.',
+    error: '重新连接后仍无法恢复此回复。',
   });
   runtime.stop();
 });
@@ -414,7 +414,7 @@ test('a silent admitted turn attempts replay and can be left without reusing its
   });
   runtime.reset();
   sockets[2].open();
-  expect(runtime.send('New chat')).toBe(true);
+  expect(runtime.send('新建对话')).toBe(true);
   expect(sockets[2].sent[0]).not.toHaveProperty('session_id');
   runtime.stop();
 });
@@ -468,7 +468,7 @@ test('bounds repeated replay failures and lets the learner reconnect without aba
   expect(runtime.getSnapshot()).toMatchObject({
     status: 'running',
     connection: 'idle',
-    error: expect.stringContaining('Reconnect'),
+    error: expect.stringContaining('重新连接'),
   });
   runtime.retryConnection();
   sockets[4].open();

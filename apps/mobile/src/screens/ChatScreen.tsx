@@ -51,11 +51,11 @@ export type ChatScreenProps = {
 };
 
 const connectionCopy: Record<RuntimeConnectionState, string> = {
-  idle: 'Disconnected',
-  connecting: 'Connecting…',
-  connected: 'Connected',
-  recovering: 'Reconnecting…',
-  stopped: 'Disconnected',
+  idle: '未连接',
+  connecting: '正在连接…',
+  connected: '已连接',
+  recovering: '正在重新连接…',
+  stopped: '未连接',
 };
 
 /** Statuses where the user may compose the next question. */
@@ -71,13 +71,13 @@ function isComposingStatus(status: ChatStatus): boolean {
 function progressCopy(status: ChatStatus): string | null {
   switch (status) {
     case 'submitting':
-      return 'Sending…';
+      return '正在发送…';
     case 'running':
-      return 'DeepTutor is replying…';
+      return 'DeepTutor 正在回复…';
     case 'cancelling':
-      return 'Stopping…';
+      return '正在停止…';
     case 'recovering':
-      return 'Checking the response on the server…';
+      return '正在检查服务器上的回复…';
     default:
       return null;
   }
@@ -165,7 +165,7 @@ export function ChatScreen({
     try {
       if (await reply(draft.trim())) setDraft('');
     } catch {
-      setActionError('Could not send your reply. Try again.');
+      setActionError('发送回复失败，请重试。');
     } finally {
       setReplying(false);
     }
@@ -176,7 +176,7 @@ export function ChatScreen({
     try {
       await cancel();
     } catch {
-      setActionError('Could not stop this reply. Try again.');
+      setActionError('停止回复失败，请重试。');
     }
   }
 
@@ -201,16 +201,16 @@ export function ChatScreen({
             style={[styles.status, { color: theme.muted }]}
           >
             {connectionCopy[connection]}
-            {sessionId ? ' · saved on the server' : ''}
+            {sessionId ? ' · 已保存到服务器' : ''}
           </Text>
         </View>
         <View style={styles.headerActions}>
           <Action
-            title="Conversations"
+            title="历史会话"
             tone="secondary"
             onPress={onOpenSessions}
           />
-          <Action title="Settings" tone="secondary" onPress={onOpenSettings} />
+          <Action title="设置" tone="secondary" onPress={onOpenSettings} />
         </View>
       </View>
 
@@ -228,13 +228,13 @@ export function ChatScreen({
           <View style={styles.bannerActions}>
             {recovery.kind === 'unavailable' ? null : (
               <Action
-                title="Dismiss"
+                title="关闭"
                 tone="secondary"
                 onPress={dismissRecovery}
               />
             )}
             {recovery.kind === 'unavailable' ? (
-              <Action title="New chat" tone="secondary" onPress={reset} />
+              <Action title="新建对话" tone="secondary" onPress={reset} />
             ) : null}
           </View>
         </View>
@@ -243,7 +243,7 @@ export function ChatScreen({
       {history === 'loading' ? (
         <View style={styles.center} accessibilityLiveRegion="polite">
           <Text style={[styles.status, { color: theme.muted }]}>
-            Loading this conversation…
+            正在加载会话…
           </Text>
         </View>
       ) : (
@@ -291,10 +291,10 @@ export function ChatScreen({
             history === 'failed' ? (
               <View style={styles.center}>
                 <Text style={[styles.status, { color: theme.muted }]}>
-                  This conversation could not be loaded.
+                  无法加载此会话。
                 </Text>
                 <Action
-                  title="Try again"
+                  title="重试"
                   tone="secondary"
                   onPress={() => retrySession()}
                 />
@@ -305,10 +305,10 @@ export function ChatScreen({
                   accessibilityRole="header"
                   style={[styles.emptyTitle, { color: theme.text }]}
                 >
-                  What would you like to learn?
+                  今天想学什么？
                 </Text>
                 <Text style={[styles.status, { color: theme.muted }]}>
-                  Ask a question to get started.
+                  提出一个问题，开始对话。
                 </Text>
               </View>
             )
@@ -325,7 +325,7 @@ export function ChatScreen({
         <ErrorNotice message={actionError || error} />
         {connection === 'stopped' || connection === 'idle' || canLeaveTurn ? (
           <Action
-            title="Reconnect"
+            title="重新连接"
             tone="secondary"
             onPress={retryConnection}
           />
@@ -335,7 +335,7 @@ export function ChatScreen({
             accessibilityLiveRegion="polite"
             style={[styles.status, { color: theme.text }]}
           >
-            {waitingPrompt || 'DeepTutor is waiting for your reply.'}
+            {waitingPrompt || 'DeepTutor 正在等你回复。'}
           </Text>
         ) : null}
         {progress ? (
@@ -351,15 +351,15 @@ export function ChatScreen({
             accessibilityLiveRegion="polite"
             style={[styles.status, { color: theme.muted }]}
           >
-            This response was stopped.
+            已停止回复。
           </Text>
         ) : null}
         <View style={styles.knowledgeRow}>
           <Action
             title={
               knowledgeBases.length
-                ? `Knowledge · ${knowledgeBases.length}`
-                : 'Knowledge'
+                ? `知识库 · ${knowledgeBases.length}`
+                : '知识库'
             }
             tone="secondary"
             onPress={() => setPickerOpen(true)}
@@ -375,25 +375,25 @@ export function ChatScreen({
         </View>
         <View style={styles.composerRow}>
           <Field
-            label={awaitingInput ? 'Reply' : 'Message'}
+            label={awaitingInput ? '回复' : '消息'}
             hideLabel
             value={draft}
             onChangeText={setDraft}
             editable={composing && !replying}
-            placeholder={awaitingInput ? 'Write a reply' : 'Ask a question'}
+            placeholder={awaitingInput ? '输入回复' : '输入你的问题'}
             style={styles.composerInput}
             multiline
           />
           {composing ? (
             <Action
-              title={awaitingInput ? 'Reply' : 'Send'}
+              title={awaitingInput ? '回复' : '发送'}
               disabled={!canSubmit && !replying}
               busy={replying}
               onPress={submit}
             />
           ) : (
             <Action
-              title="Stop"
+              title="停止"
               tone="secondary"
               busy={status === 'cancelling'}
               onPress={stop}
@@ -404,7 +404,7 @@ export function ChatScreen({
           <View style={styles.secondaryRow}>
             {awaitingInput ? (
               <Action
-                title="Stop task"
+                title="停止任务"
                 tone="secondary"
                 disabled={replying}
                 onPress={stop}
@@ -412,7 +412,7 @@ export function ChatScreen({
             ) : null}
             {canStartNewChat || canLeaveTurn ? (
               <Action
-                title="New chat"
+                title="新建对话"
                 tone="secondary"
                 onPress={() => {
                   reset();

@@ -66,7 +66,7 @@ export interface UploadRequest {
 
 function parseUploadResult(value: unknown): UploadResult {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw new ApiError('invalid-response', 'The server did not accept the upload.');
+    throw new ApiError('invalid-response', '服务器未接受上传。');
   }
   const raw = value as Record<string, unknown>;
   const files = Array.isArray(raw.files)
@@ -137,7 +137,7 @@ async function assertUploadTargetIsDirect(
   signal: AbortSignal | undefined,
 ): Promise<void> {
   if (signal?.aborted) {
-    throw new ApiError('aborted', 'The upload was cancelled.');
+    throw new ApiError('aborted', '上传已取消。');
   }
   const probe = new AbortController();
   const forwardAbort = () => probe.abort();
@@ -161,17 +161,17 @@ async function assertUploadTargetIsDirect(
     redirected = response.redirected;
   } catch {
     if (signal?.aborted) {
-      throw new ApiError('aborted', 'The upload was cancelled.');
+      throw new ApiError('aborted', '上传已取消。');
     }
     if (timedOut) {
       throw new ApiError(
         'timeout',
-        'The server did not confirm the upload address in time. Try again.',
+        '服务器未及时确认上传地址，请重试。',
       );
     }
     throw new ApiError(
       'network',
-      'Could not check the upload address. Check your connection.',
+      '无法检查上传地址，请检查网络。',
     );
   } finally {
     clearTimeout(timer);
@@ -181,7 +181,7 @@ async function assertUploadTargetIsDirect(
   if (redirected || (status >= 300 && status < 400)) {
     throw new ApiError(
       'redirect',
-      'The server redirects uploads to another address. Enter its final address.',
+      '服务器会将上传重定向到其他地址，请输入最终地址。',
       status,
     );
   }
@@ -264,15 +264,15 @@ export function uploadKnowledgeFiles({
       () =>
         fail(
           'timeout',
-          'The upload stopped making progress. Check your connection and try again.',
+          '上传长时间没有进展，请检查网络后重试。',
         ),
       STALL_TIMEOUT_MS,
     );
   };
-  const abortTransfer = () => fail('aborted', 'The upload was cancelled.');
+  const abortTransfer = () => fail('aborted', '上传已取消。');
 
   if (signal?.aborted) {
-    fail('aborted', 'The upload was cancelled.');
+    fail('aborted', '上传已取消。');
     return { promise, abort: abortTransfer };
   }
   signal?.addEventListener('abort', abortTransfer);
@@ -304,23 +304,23 @@ export function uploadKnowledgeFiles({
       if (request.responseURL && !isSameUploadUrl(request.responseURL, url)) {
         fail(
           'redirect',
-          'The upload was redirected to another address and was not accepted.',
+          '上传被重定向到其他地址，未被接收。',
           status,
         );
         return;
       }
       if (status === 401) {
-        fail('unauthorized', 'Sign-in is required.', 401);
+        fail('unauthorized', '请先登录。', 401);
         return;
       }
       if (status >= 300 && status < 400) {
-        fail('redirect', 'Enter the final address of the DeepTutor server.', status);
+        fail('redirect', '请输入 DeepTutor 服务器的最终地址。', status);
         return;
       }
       if (status < 200 || status >= 300) {
         fail(
           'http',
-          `The server returned HTTP ${status}.`,
+          `服务器返回 HTTP ${status}。`,
           status,
           refusalDetail(request.responseText),
         );
@@ -330,33 +330,33 @@ export function uploadKnowledgeFiles({
       try {
         parsed = JSON.parse(request.responseText) as unknown;
       } catch {
-        fail('invalid-response', 'The server did not accept the upload.');
+        fail('invalid-response', '服务器未接受上传。');
         return;
       }
       try {
         succeed(parseUploadResult(parsed));
       } catch (error) {
         if (error instanceof ApiError) fail(error.kind, error.message, error.status);
-        else fail('invalid-response', 'The server did not accept the upload.');
+        else fail('invalid-response', '服务器未接受上传。');
       }
     };
     request.onerror = () =>
-      fail('network', 'Could not reach the server. Check your connection.');
-    request.onabort = () => fail('aborted', 'The upload was cancelled.');
+      fail('network', '无法连接服务器，请检查网络。');
+    request.onabort = () => fail('aborted', '上传已取消。');
     request.ontimeout = () =>
-      fail('timeout', 'The upload took too long. Try again.');
+      fail('timeout', '上传超时，请重试。');
 
     armStall();
     try {
       request.send(form);
     } catch {
-      fail('network', 'Could not start the upload.');
+      fail('network', '无法开始上传。');
     }
   };
 
   start().catch(error => {
     if (error instanceof ApiError) fail(error.kind, error.message, error.status);
-    else fail('network', 'Could not start the upload.');
+    else fail('network', '无法开始上传。');
   });
 
   return { promise, abort: abortTransfer };
@@ -411,7 +411,7 @@ export function validatePickedFiles(
     if (!name || name === '.' || name === '..') {
       rejected.push({
         name: file.name,
-        reason: 'This file has no usable name.',
+        reason: '此文件没有可用的名称。',
         uri: file.uri,
       });
       continue;
@@ -419,13 +419,13 @@ export function validatePickedFiles(
     // An unknown size is not an error: some providers report none, and the
     // server's own limit still applies.
     if (file.size !== undefined && file.size <= 0) {
-      rejected.push({ name, reason: 'This file is empty.', uri: file.uri });
+      rejected.push({ name, reason: '此文件为空。', uri: file.uri });
       continue;
     }
     if (file.size !== undefined && max > 0 && file.size > max) {
       rejected.push({
         name,
-        reason: `Larger than the ${formatBytes(max)} limit on this server.`,
+        reason: `文件大小超过服务器的 ${formatBytes(max)} 限制。`,
         uri: file.uri,
       });
       continue;
@@ -435,8 +435,8 @@ export function validatePickedFiles(
       rejected.push({
         name,
         reason: extension
-          ? `This server does not accept ${extension} files.`
-          : 'This server needs a file extension it recognises.',
+          ? `此服务器不支持 ${extension} 文件。`
+          : '文件需要使用服务器支持的扩展名。',
         uri: file.uri,
       });
       continue;
