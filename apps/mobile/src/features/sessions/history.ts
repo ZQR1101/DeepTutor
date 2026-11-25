@@ -5,6 +5,7 @@ import {
   type SessionTurn,
   type TurnStatus,
 } from '../../services/sessionApi';
+import type { TurnDetails } from '../chat/turnDetails';
 
 /** One question and the reply it produced, as the transcript renders them. */
 export interface ChatExchange {
@@ -14,6 +15,22 @@ export interface ChatExchange {
   /** Failure copy for a turn that saved the question but never replied. */
   failed: string | null;
   retryable: boolean;
+  assistantMessageId?: string;
+  eventHistoryTurnId?: string;
+  details?: TurnDetails;
+}
+
+/** The same assistant identity is used for a saved answer and a recovered one. */
+export function assistantDetails(
+  message: SessionMessage | undefined,
+  includePreview = true,
+): Partial<ChatExchange> {
+  if (!message) return {};
+  return {
+    ...(message.id ? { assistantMessageId: message.id } : {}),
+    ...(message.eventHistoryTurnId ? { eventHistoryTurnId: message.eventHistoryTurnId } : {}),
+    ...(includePreview && message.details ? { details: message.details } : {}),
+  };
 }
 
 const DEFAULT_FAILURE = '本次回复未完成。';
@@ -55,6 +72,7 @@ export function toExchanges(
     }
     if (open && !open.answer && !open.failed) {
       open.answer = message.content;
+      Object.assign(open, assistantDetails(message));
       // A reply closes the pair; a second assistant row becomes its own entry.
       open = null;
       continue;
@@ -65,6 +83,7 @@ export function toExchanges(
       answer: message.content,
       failed: null,
       retryable: false,
+      ...assistantDetails(message),
     });
   }
   return exchanges;

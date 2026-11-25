@@ -18,6 +18,7 @@ import {
   type TurnSocketFactory,
 } from '@/features/chat/transport/socket';
 import {
+  assistantDetails,
   toExchanges,
   resolveTurn,
   type ChatExchange,
@@ -35,6 +36,7 @@ import type {
   RecoveryScope,
   TurnRecoveryStore,
 } from '../../storage/turnRecovery';
+import { emptyTurnDetails, projectTurnEvent } from './turnDetails';
 
 /**
  * The task's own state, named after what the server reports for a turn
@@ -69,6 +71,7 @@ type ChatState = {
   sessionId: string | null;
   sessionTitle: string;
   messages: ChatExchange[];
+  activeMessageId: string | null;
   history: HistoryState;
   waitingPrompt: string | null;
   canLeaveTurn: boolean;
@@ -172,6 +175,7 @@ function initialState(): ChatState {
     sessionId: null,
     sessionTitle: '',
     messages: [],
+    activeMessageId: null,
     history: 'idle',
     waitingPrompt: null,
     canLeaveTurn: false,
@@ -596,7 +600,7 @@ export class MobileChatRuntime {
       let messageId: string;
       if (exchange && !exchange.answer && !exchange.failed) {
         messageId = exchange.id;
-        if (saved) exchange.answer = saved.content;
+        if (saved) Object.assign(exchange, { answer: saved.content, ...assistantDetails(saved, false) });
       } else {
         messageId = `turn:${turn.id}`;
         messages.push({
@@ -605,6 +609,7 @@ export class MobileChatRuntime {
           answer: saved?.content ?? '',
           failed: null,
           retryable: false,
+          ...assistantDetails(saved, false),
         });
       }
       const active: ActiveTurn = {
@@ -1029,6 +1034,13 @@ export class MobileChatRuntime {
       this.update({ sessionId: this.sessionId });
       if (this.sessionId) this.rememberSession(this.sessionId);
     }
+    if (event.type !== 'content') {
+      this.patchActiveExchange(active, message => {
+        const previous = message.details ?? emptyTurnDetails;
+        const details = projectTurnEvent(previous, event);
+        return details === previous ? message : { ...message, details };
+      });
+    }
     switch (event.type) {
       case 'content':
         if (
@@ -1052,7 +1064,7 @@ export class MobileChatRuntime {
         this.update({
           status: active.cancelRequested ? 'cancelling' : 'waiting_for_input',
           waitingPrompt:
-            event.content || 'DeepTutor needs a reply to continue.',
+            event.content || '请回复 DeepTutor 以继续。',
         });
         // A run parked on a question must survive a process death, so that
         // transition is always written rather than throttled.
@@ -1157,13 +1169,24 @@ export class MobileChatRuntime {
   private updateAnswer(active: ActiveTurn, answer: string, replace: boolean) {
     // A resumed turn replays from seq 0 into an exchange whose answer was
     // cleared first, so appending is correct there too — no duplicate text.
-    this.update({
-      messages: this.state.messages.map(message =>
-        message.id === active.messageId
-          ? { ...message, answer: replace ? answer : message.answer + answer }
-          : message,
-      ),
+    this.patchActiveExchange(active, message => {
+      const text = replace ? answer : message.answer + answer;
+      return text === message.answer ? message : { ...message, answer: text };
     });
+  }
+
+  private patchActiveExchange(active: ActiveTurn, apply: (message: ChatExchange) => ChatExchange) {
+    const rows = this.state.messages;
+    const last = rows.length - 1;
+    const index = rows[last]?.id === active.messageId
+      ? last
+      : rows.findIndex(message => message.id === active.messageId);
+    if (index < 0) return;
+    const updated = apply(rows[index]);
+    if (updated === rows[index]) return;
+    const messages = rows.slice();
+    messages[index] = updated;
+    this.update({ messages });
   }
 
   private finishTurn(outcome: ChatStatus, error?: string) {
@@ -1197,7 +1220,7 @@ export class MobileChatRuntime {
   }
 
   private update(patch: Partial<ChatState>) {
-    this.state = { ...this.state, ...patch };
+    this.state = { ...this.state, ...patch, activeMessageId: this.active?.messageId ?? null };
     for (const listener of this.listeners) listener();
   }
 }

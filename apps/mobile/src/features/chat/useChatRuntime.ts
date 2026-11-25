@@ -88,5 +88,6 @@ export function useChatRuntime(options: UseChatRuntimeOptions) {
     setKnowledgeBases,
     toggleKnowledgeBase,
     dismissRecovery: runtime.dismissRecovery,
+    loadMessageDetails: sessionApi.getMessageDetails,
   };
 }

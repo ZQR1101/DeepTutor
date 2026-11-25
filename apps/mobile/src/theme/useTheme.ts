@@ -18,6 +18,8 @@ const light = {
   inputBorder: '#a99d8f',
   error: '#972d24',
   errorSurface: '#fceee9',
+  codeString: '#386733',
+  codeAccent: '#543a92',
 };
 
 const dark: typeof light = {
@@ -33,6 +35,8 @@ const dark: typeof light = {
   inputBorder: '#827972',
   error: '#fca49a',
   errorSurface: '#3f2723',
+  codeString: '#a9ca91',
+  codeAccent: '#c4b3f3',
 };
 
 export function useTheme() {

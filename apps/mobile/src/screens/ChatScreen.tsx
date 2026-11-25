@@ -1,9 +1,12 @@
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   FlatList,
+  Pressable,
   StyleSheet,
   Text,
+  TextInput,
   View,
+  type ListRenderItemInfo,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native';
@@ -14,8 +17,9 @@ import type {
   RecoveryNotice,
 } from '../features/chat/MobileChatRuntime';
 import type { ChatExchange } from '../features/sessions/history';
+import { ChatExchangeRow, type LoadMessageDetails } from '../features/chat/ChatExchangeRow';
 import type { KnowledgeBaseSummary } from '../services/knowledgeApi';
-import { Action, ErrorNotice, Field } from '../components/FormControls';
+import { Action, ErrorNotice } from '../components/FormControls';
 import { Screen } from '../components/Screen';
 import { KnowledgePicker, displayRef } from './knowledge/KnowledgePicker';
 import { radius, spacing, textSize, useTheme } from '../theme/useTheme';
@@ -26,6 +30,8 @@ export type ChatScreenProps = {
   sessionId: string | null;
   sessionTitle: string;
   messages: readonly ChatExchange[];
+  activeMessageId?: string | null;
+  loadMessageDetails?: LoadMessageDetails;
   history: HistoryState;
   waitingPrompt: string | null;
   canLeaveTurn: boolean;
@@ -58,6 +64,32 @@ const connectionCopy: Record<RuntimeConnectionState, string> = {
   stopped: '未连接',
 };
 
+function CompactAction({ title, label, disabled, onPress }: {
+  title: string;
+  label?: string;
+  disabled?: boolean;
+  onPress: () => void;
+}) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label ?? title}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.compactAction,
+        { opacity: disabled ? 0.4 : pressed ? 0.65 : 1 },
+      ]}
+    >
+      <Text style={[styles.compactLabel, { color: theme.text }]}>{title}</Text>
+    </Pressable>
+  );
+}
+
+const exchangeKey = (item: ChatExchange) => item.id;
+
 /** Statuses where the user may compose the next question. */
 function isComposingStatus(status: ChatStatus): boolean {
   return (
@@ -89,6 +121,8 @@ export function ChatScreen({
   sessionId,
   sessionTitle,
   messages,
+  activeMessageId,
+  loadMessageDetails,
   history,
   waitingPrompt,
   canLeaveTurn,
@@ -141,16 +175,35 @@ export function ChatScreen({
         knowledgeOptions.find(option => option.ref === ref)?.name ??
         displayRef(ref),
     )
-    .join(', ');
+    .join('、');
 
-  function followLatest() {
+  const browse = useCallback(() => { follow.current = false; }, []);
+  const followLatest = useCallback(() => {
     if (follow.current) list.current?.scrollToEnd({ animated: false });
-  }
+  }, []);
 
-  function handleScroll(event: NativeSyntheticEvent<NativeScrollEvent>) {
+  const settleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
     follow.current =
-      contentSize.height - layoutMeasurement.height - contentOffset.y < 72;
+      contentSize.height - layoutMeasurement.height - contentOffset.y < 42;
+  }, []);
+
+  const renderExchange = useCallback(({ item }: ListRenderItemInfo<ChatExchange>) => (
+    <ChatExchangeRow
+      key={JSON.stringify([sessionId, item.id, item.assistantMessageId, item.eventHistoryTurnId])}
+      item={item}
+      active={item.id === activeMessageId}
+      sessionId={sessionId}
+      loadMessageDetails={loadMessageDetails}
+      onBrowse={browse}
+    />
+  ), [activeMessageId, browse, loadMessageDetails, sessionId]);
+
+  function newChat() {
+    reset();
+    follow.current = true;
+    setDraft('');
+    setActionError(null);
   }
 
   async function submit() {
@@ -205,12 +258,9 @@ export function ChatScreen({
           </Text>
         </View>
         <View style={styles.headerActions}>
-          <Action
-            title="历史会话"
-            tone="secondary"
-            onPress={onOpenSessions}
-          />
-          <Action title="设置" tone="secondary" onPress={onOpenSettings} />
+          <CompactAction title="历史" label="历史会话" onPress={onOpenSessions} />
+          <CompactAction title="新建" label="新建对话" disabled={!canStartNewChat && !canLeaveTurn} onPress={newChat} />
+          <CompactAction title="设置" onPress={onOpenSettings} />
         </View>
       </View>
 
@@ -233,9 +283,6 @@ export function ChatScreen({
                 onPress={dismissRecovery}
               />
             )}
-            {recovery.kind === 'unavailable' ? (
-              <Action title="新建对话" tone="secondary" onPress={reset} />
-            ) : null}
           </View>
         </View>
       ) : null}
@@ -250,43 +297,19 @@ export function ChatScreen({
         <FlatList
           ref={list}
           data={messages}
-          keyExtractor={message => message.id}
+          keyExtractor={exchangeKey}
           contentContainerStyle={styles.conversation}
           keyboardShouldPersistTaps="handled"
-          onScroll={handleScroll}
-          scrollEventThrottle={48}
+          keyboardDismissMode="on-drag"
+          onScrollBeginDrag={browse}
+          onScrollEndDrag={settleScroll}
+          onMomentumScrollBegin={browse}
+          onMomentumScrollEnd={settleScroll}
           onContentSizeChange={followLatest}
-          renderItem={({ item }) => (
-            <View style={styles.exchange}>
-              {item.question ? (
-                <Text
-                  selectable
-                  style={[
-                    styles.question,
-                    { color: theme.text, backgroundColor: theme.secondary },
-                  ]}
-                >
-                  {item.question}
-                </Text>
-              ) : null}
-              {item.answer ? (
-                <Text selectable style={[styles.answer, { color: theme.text }]}>
-                  {item.answer}
-                </Text>
-              ) : null}
-              {item.failed ? (
-                <Text
-                  accessibilityRole="alert"
-                  style={[
-                    styles.failure,
-                    { color: theme.error, backgroundColor: theme.errorSurface },
-                  ]}
-                >
-                  {item.failed}
-                </Text>
-              ) : null}
-            </View>
-          )}
+          initialNumToRender={8}
+          maxToRenderPerBatch={6}
+          windowSize={7}
+          renderItem={renderExchange}
           ListEmptyComponent={
             history === 'failed' ? (
               <View style={styles.center}>
@@ -354,76 +377,49 @@ export function ChatScreen({
             已停止回复。
           </Text>
         ) : null}
-        <View style={styles.knowledgeRow}>
-          <Action
-            title={
-              knowledgeBases.length
-                ? `知识库 · ${knowledgeBases.length}`
-                : '知识库'
-            }
-            tone="secondary"
-            onPress={() => setPickerOpen(true)}
-          />
-          {knowledgeBases.length ? (
-            <Text
-              numberOfLines={1}
-              style={[styles.status, { color: theme.muted }]}
-            >
-              {knowledgeNames}
-            </Text>
-          ) : null}
-        </View>
-        <View style={styles.composerRow}>
-          <Field
-            label={awaitingInput ? '回复' : '消息'}
-            hideLabel
+        <View style={[styles.inputShell, { borderColor: theme.inputBorder, backgroundColor: theme.background }]}>
+          <TextInput
+            accessibilityLabel={awaitingInput ? '回复' : '消息'}
             value={draft}
             onChangeText={setDraft}
             editable={composing && !replying}
             placeholder={awaitingInput ? '输入回复' : '输入你的问题'}
-            style={styles.composerInput}
+            placeholderTextColor={theme.muted}
+            selectionColor={theme.primary}
+            keyboardAppearance={theme.dark ? 'dark' : 'light'}
+            style={[styles.composerInput, { color: theme.text }]}
             multiline
           />
-          {composing ? (
-            <Action
-              title={awaitingInput ? '回复' : '发送'}
-              disabled={!canSubmit && !replying}
-              busy={replying}
-              onPress={submit}
+          <View style={styles.composerRow}>
+            <CompactAction
+              title={knowledgeBases.length ? '知识库 · ' + knowledgeBases.length : '知识库'}
+              onPress={() => setPickerOpen(true)}
             />
-          ) : (
-            <Action
-              title="停止"
-              tone="secondary"
-              busy={status === 'cancelling'}
-              onPress={stop}
-            />
-          )}
-        </View>
-        {awaitingInput || (canStartNewChat && messages.length > 0) ? (
-          <View style={styles.secondaryRow}>
+            {knowledgeNames ? (
+              <Text numberOfLines={1} style={[styles.selectedKnowledge, { color: theme.muted }]}>
+                {knowledgeNames}
+              </Text>
+            ) : <View style={styles.selectedKnowledge} />}
             {awaitingInput ? (
+              <CompactAction title="停止任务" disabled={replying} onPress={stop} />
+            ) : null}
+            {composing ? (
               <Action
-                title="停止任务"
+                title={awaitingInput ? '回复' : '发送'}
+                disabled={!canSubmit && !replying}
+                busy={replying}
+                onPress={submit}
+              />
+            ) : (
+              <Action
+                title="停止"
                 tone="secondary"
-                disabled={replying}
+                busy={status === 'cancelling'}
                 onPress={stop}
               />
-            ) : null}
-            {canStartNewChat || canLeaveTurn ? (
-              <Action
-                title="新建对话"
-                tone="secondary"
-                onPress={() => {
-                  reset();
-                  follow.current = true;
-                  setDraft('');
-                  setActionError(null);
-                }}
-              />
-            ) : null}
+            )}
           </View>
-        ) : null}
+        </View>
       </View>
 
       <KnowledgePicker
@@ -454,10 +450,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: spacing.md,
   },
-  heading: { flex: 1, gap: spacing.xs },
-  headerActions: { flexDirection: 'row', gap: spacing.sm },
-  title: { fontSize: textSize.heading, fontWeight: '700' },
-  status: { fontSize: textSize.small, lineHeight: 20 },
+  heading: { flex: 1, minWidth: 0, gap: 2 },
+  headerActions: { flexDirection: 'row', alignItems: 'center' },
+  compactAction: { minHeight: 44, justifyContent: 'center', paddingHorizontal: spacing.sm },
+  compactLabel: { fontSize: 14, fontWeight: '600' },
+  title: { fontSize: 19, fontWeight: '700' },
+  status: { fontSize: 13, lineHeight: 19 },
   bannerRow: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, gap: spacing.sm },
   banner: {
     padding: spacing.md,
@@ -473,23 +471,7 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     gap: spacing.md,
   },
-  conversation: { flexGrow: 1, padding: spacing.lg, gap: spacing.lg },
-  exchange: { gap: spacing.md },
-  question: {
-    alignSelf: 'flex-end',
-    maxWidth: '88%',
-    borderRadius: radius.md,
-    padding: spacing.md,
-    fontSize: textSize.body,
-    lineHeight: 23,
-  },
-  answer: { fontSize: textSize.body, lineHeight: 24 },
-  failure: {
-    padding: spacing.md,
-    borderRadius: radius.sm,
-    fontSize: textSize.small,
-    lineHeight: 20,
-  },
+  conversation: { flexGrow: 1, padding: spacing.lg, gap: spacing.xl },
   empty: {
     flex: 1,
     justifyContent: 'center',
@@ -505,10 +487,10 @@ const styles = StyleSheet.create({
   },
   composerRow: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: spacing.sm,
+    alignItems: 'center',
+    gap: spacing.xs,
   },
-  composerInput: { flex: 1 },
-  knowledgeRow: { gap: spacing.xs },
-  secondaryRow: { alignSelf: 'flex-end' },
+  inputShell: { borderWidth: 1, borderRadius: radius.lg, paddingHorizontal: spacing.sm, paddingBottom: spacing.xs },
+  composerInput: { minHeight: 48, maxHeight: 120, padding: spacing.sm, fontSize: 16, lineHeight: 23 },
+  selectedKnowledge: { flex: 1, minWidth: 0, fontSize: 12 },
 });

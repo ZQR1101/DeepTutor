@@ -1,4 +1,10 @@
 import { ApiClient } from './apiClient';
+import {
+  emptyTurnDetails,
+  object,
+  projectTurnEvent,
+  type TurnDetails,
+} from '../features/chat/turnDetails';
 
 /**
  * Conversation history is owned by the DeepTutor server. These parsers read the
@@ -36,6 +42,8 @@ export interface SessionMessage {
   createdAt: number;
   turnId?: string;
   parentMessageId?: string;
+  eventHistoryTurnId?: string;
+  details?: TurnDetails;
   /** Present on a saved user row whose turn failed before any reply existed. */
   failedTurn: FailedTurnInfo | null;
 }
@@ -140,7 +148,7 @@ function parseFailedTurn(value: unknown): FailedTurnInfo | null {
   };
 }
 
-function parseMessage(value: unknown): SessionMessage {
+function parseMessage(value: unknown, sessionId: string): SessionMessage {
   const raw = record(value, 'a session message');
   const role = raw.role;
   if (role !== 'user' && role !== 'assistant' && role !== 'system') {
@@ -152,6 +160,16 @@ function parseMessage(value: unknown): SessionMessage {
       ? (raw.trace as Record<string, unknown>)
       : {};
   const turnId = text(metadata.turn_id) || text(trace.turn_id);
+  const eventHistoryTurnId = role === 'assistant' ? text(trace.turn_id) : '';
+  let details = emptyTurnDetails;
+  if (role === 'assistant' && Array.isArray(raw.events)) {
+    raw.events.forEach((input, index) => {
+      const event = object(input);
+      if (!event || (event.session_id && event.session_id !== sessionId) ||
+          (turnId && event.turn_id && event.turn_id !== turnId)) return;
+      details = projectTurnEvent(details, event, 'preview:' + index);
+    });
+  }
   const parentMessageId = rowId(raw.parent_message_id);
   return {
     id: rowId(raw.id),
@@ -161,6 +179,8 @@ function parseMessage(value: unknown): SessionMessage {
     failedTurn: parseFailedTurn(metadata.orphaned_failed_turn),
     ...(turnId ? { turnId } : {}),
     ...(parentMessageId ? { parentMessageId } : {}),
+    ...(eventHistoryTurnId ? { eventHistoryTurnId } : {}),
+    ...(details !== emptyTurnDetails ? { details } : {}),
   };
 }
 
@@ -221,7 +241,7 @@ function parseDetail(value: unknown): SessionDetail {
     : [];
   return {
     ...summary,
-    messages: raw.messages.map(parseMessage),
+    messages: raw.messages.map(message => parseMessage(message, summary.id)),
     activeTurns,
     knowledgeBases,
   };
@@ -278,6 +298,45 @@ export class SessionApi {
       { signal },
     );
   }
+
+  /** Read only the event journal for the selected, server-owned assistant row. */
+  getMessageDetails = async (
+    sessionId: string,
+    messageId: string,
+    turnId: string,
+    signal: AbortSignal,
+  ): Promise<TurnDetails> => {
+    const path = `/api/sessions/${encodeURIComponent(sessionId)}/messages/${encodeURIComponent(messageId)}/events` as const;
+    let cursor = 0;
+    let details = emptyTurnDetails;
+    for (;;) {
+      const page = await this.client.json(
+        `${path}?workspace_id=&after_seq=${cursor}&limit=200`,
+        value => {
+          const raw = record(value, 'message events');
+          if (raw.session_id !== sessionId || rowId(raw.message_id) !== messageId ||
+              raw.turn_id !== turnId || !Array.isArray(raw.events)) {
+            throw new Error('Message event journal identity mismatch');
+          }
+          return raw;
+        },
+        { signal },
+      );
+      (page.events as unknown[]).forEach((input, index) => {
+        const event = object(input);
+        if (!event || (event.session_id && event.session_id !== sessionId) ||
+            (event.turn_id && event.turn_id !== turnId)) return;
+        const seq = event.seq;
+        if (typeof seq === 'number' && seq <= cursor) return;
+        details = projectTurnEvent(details, event, cursor + ':' + index);
+      });
+      if (page.complete === true) return details;
+      if (typeof page.next_seq !== 'number' || !Number.isSafeInteger(page.next_seq) || page.next_seq <= cursor) {
+        throw new Error('无法继续读取这条消息的执行过程。');
+      }
+      cursor = page.next_seq;
+    }
+  };
 
   async rename(sessionId: string, title: string): Promise<string> {
     const value = await this.client.json(
