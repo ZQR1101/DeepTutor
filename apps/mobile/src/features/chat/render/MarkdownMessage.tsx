@@ -24,7 +24,7 @@ import { parseMarkdown, type MarkdownNode } from './markdown';
 type SourceLink = (url: string) => (() => void) | undefined;
 type Theme = ReturnType<typeof useTheme>;
 
-export const CopyText = memo(function CopyText({
+export const CopyText = memo(function CopyTextControl({
   value,
   label,
 }: {
@@ -59,7 +59,7 @@ export const CopyText = memo(function CopyText({
   );
 });
 
-const Formula = memo(function Formula({
+const Formula = memo(function FormulaView({
   tex,
   display,
 }: {
@@ -73,16 +73,20 @@ const Formula = memo(function Formula({
     tex,
     display,
   );
-  if (!graphic)
+  const maxWidth = display ? 2_400 : Math.max(1, width - 56);
+  const height = graphic
+    ? Math.min(
+        display ? 140 : 48,
+        Math.max(15, graphic.height),
+        maxWidth / graphic.ratio,
+      )
+    : 0;
+  if (!graphic || height < 8)
     return (
       <Text selectable style={{ color: theme.muted }}>
         {tex}
       </Text>
     );
-  const preferred = Math.min(display ? 140 : 48, Math.max(15, graphic.height));
-  const height = display
-    ? preferred
-    : Math.min(preferred, (width - 56) / graphic.ratio);
   const size = { width: height * graphic.ratio, height };
   const image = (
     <View accessible accessibilityLabel={tex} style={size}>
@@ -127,7 +131,7 @@ function codeColor(scope: string | undefined, theme: Theme): string {
   }
 }
 
-const CodeBlock = memo(function CodeBlock({
+const CodeBlock = memo(function HighlightedCode({
   code,
   language,
 }: {
@@ -200,9 +204,7 @@ function inline(
             accessibilityRole={reveal ? 'link' : undefined}
             onPress={reveal}
             style={
-              reveal
-                ? { color: theme.primary, textDecorationLine: 'underline' }
-                : undefined
+              reveal ? [styles.sourceLink, { color: theme.primary }] : undefined
             }
           >
             {inline(children, theme, sourceLink)}
@@ -354,7 +356,7 @@ function blocks(
   });
 }
 
-export const MarkdownMessage = memo(function MarkdownMessage({
+export const MarkdownMessage = memo(function RichAnswer({
   text,
   streaming,
   sourceLink,
@@ -381,6 +383,7 @@ const styles = StyleSheet.create({
   strong: { fontWeight: '700' },
   emphasis: { fontStyle: 'italic' },
   strike: { textDecorationLine: 'line-through' },
+  sourceLink: { textDecorationLine: 'underline' },
   quote: { borderLeftWidth: 3, paddingLeft: spacing.md, gap: spacing.xs },
   list: { gap: 3 },
   listRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },

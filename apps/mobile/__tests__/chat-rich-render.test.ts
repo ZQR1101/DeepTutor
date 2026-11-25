@@ -1,5 +1,6 @@
 import {
   parseMarkdown,
+  visibleAnswer,
   type MarkdownNode,
 } from '../src/features/chat/render/markdown';
 import { mathSvg } from '../src/features/chat/render/mathSvg';
@@ -10,6 +11,7 @@ function tokens(nodes: readonly MarkdownNode[]): string[] {
 }
 
 const fence = String.fromCharCode(96).repeat(3);
+const tick = String.fromCharCode(96);
 
 test('renders CommonMark structures, tables, and both inline and display math', () => {
   const text = [
@@ -66,6 +68,25 @@ test('HTML is never a renderable node, and highlighting round-trips source chara
   expect(segments.some(segment => segment.scope === 'string')).toBe(true);
   expect(segments.map(segment => segment.text).join('')).toBe(code);
   expect(codeSegments(code, 'unknown-grammar')).toEqual([{ text: code }]);
+});
+
+test('unfinished display math does not absorb headings, other formulas, or fenced examples', () => {
+  const unfinished = '\\[\n未闭合\n\n### 标题\n\n\\[z=3\\]';
+  const nodes = tokens(parseMarkdown(unfinished, true));
+  expect(nodes).toContain('heading_open');
+  expect(nodes.filter(type => type === 'math_display')).toHaveLength(1);
+  const withCode = '$$\n未闭合\n\n' + fence + 'text\n$$\n' + fence;
+  expect(tokens(parseMarkdown(withCode, true))).toContain('fence');
+  expect(tokens(parseMarkdown(withCode, true))).not.toContain('math_display');
+});
+
+test('hides reasoning markup without removing code examples', () => {
+  const example = '语法示例：' + tick + '<think>' + tick + '。';
+  expect(visibleAnswer('<think>private</think>' + example)).toBe(example);
+  expect(visibleAnswer(example + '<thinking>still streaming')).toBe(example);
+  expect(visibleAnswer(fence + '\n<think>literal\n' + fence)).toBe(
+    fence + '\n<think>literal\n' + fence,
+  );
 });
 
 test('math graphics are self-contained and unsupported commands fall back', () => {

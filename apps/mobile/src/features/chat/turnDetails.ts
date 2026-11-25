@@ -17,7 +17,7 @@ export type RagSource = {
   document: string;
   knowledgeBase: string;
   excerpt: string;
-  page?: number;
+  page?: number | string;
   urls: string[];
 };
 
@@ -88,17 +88,15 @@ function ragSource(input: unknown): RagSource | undefined {
   const page =
     typeof row.page === 'number' && Number.isInteger(row.page) && row.page > 0
       ? row.page
-      : undefined;
+      : text(row.page, 40) || undefined;
   const chunk = text(row.chunk_id);
+  const provenance =
+    text(row.document_key) || text(row.file_name) || origin || document;
   const id = chunk
-    ? JSON.stringify([knowledgeRef, chunk])
-    : JSON.stringify([
-        knowledgeRef,
-        urls[0],
-        document,
-        page,
-        urls[0] ? '' : excerpt,
-      ]);
+    ? JSON.stringify([knowledgeRef, 'chunk', provenance, chunk])
+    : urls[0]
+    ? JSON.stringify([knowledgeRef, 'url', urls[0]])
+    : JSON.stringify([knowledgeRef, document, page, excerpt]);
   return {
     id,
     document,
@@ -122,7 +120,7 @@ function addStep(details: TurnDetails, step: TurnStep): TurnDetails {
   const state = preserve ? current.state : step.state;
   const detail =
     preserve && current.state === 'failed'
-      ? current.detail
+      ? current.detail || step.detail
       : step.detail || current.detail;
   if (
     state === current.state &&
@@ -158,6 +156,8 @@ export function projectTurnEvent(
       const updated = before
         ? {
             ...next,
+            document: next.document || before.document,
+            page: next.page ?? before.page,
             excerpt:
               next.excerpt.length > before.excerpt.length
                 ? next.excerpt
@@ -167,6 +167,8 @@ export function projectTurnEvent(
         : next;
       if (
         !before ||
+        updated.document !== before.document ||
+        updated.page !== before.page ||
         updated.excerpt !== before.excerpt ||
         updated.urls.length !== before.urls.length
       ) {
@@ -190,19 +192,28 @@ export function projectTurnEvent(
   const stage = text(event.stage);
   const isStage =
     (event.type === 'stage_start' || event.type === 'stage_end') && !!stage;
+  const toolProgress =
+    meta.trace_kind === 'call_status' &&
+    (retrieval || !!tool || meta.trace_group === 'tool_call');
   const isCall =
     event.type === 'tool_call' ||
     event.type === 'tool_result' ||
     (['progress', 'observation', 'error'].includes(String(event.type)) &&
-      (meta.trace_kind === 'call_status' || retrieval));
+      toolProgress);
   if (!isCall && !isStage && event.type !== 'error') return previous;
   // Never surface reasoning/thinking events, deltas, or argument payloads.
   const label = retrieval
     ? '检索知识库'
     : isCall
-    ? tools[tool] || (tool ? '调用工具 · ' + tool : '工具调用')
+    ? Object.hasOwn(tools, tool)
+      ? tools[tool]
+      : tool
+      ? '调用工具 · ' + tool
+      : '工具调用'
     : isStage
-    ? stages[stage] || text(meta.label) || stage
+    ? Object.hasOwn(stages, stage)
+      ? stages[stage]
+      : text(meta.label) || stage
     : '任务出错';
   const id = isStage
     ? 'stage:' + (callId || stage)
@@ -220,13 +231,18 @@ export function projectTurnEvent(
     : event.type === 'tool_result'
     ? 'returned'
     : 'running';
-  const detail = failed
-    ? text(meta.error, 1_200) ||
-      text(result?.error, 1_200) ||
-      text(event.content, 1_200)
-    : event.type === 'tool_result'
-    ? text(result?.summary, 1_200) || text(event.content, 1_200)
-    : undefined;
+  const failedResult =
+    state === 'returned' &&
+    previous.steps.some(step => step.id === id && step.state === 'failed');
+  const detail =
+    failed || failedResult
+      ? text(meta.error, 1_200) ||
+        text(result?.error, 1_200) ||
+        text(event.content, 1_200)
+      : event.type === 'tool_result'
+      ? text(result?.summary, 600) ||
+        (!retrieval ? text(event.content, 600) : '')
+      : undefined;
   return addStep(previous, { id, label, state, ...(detail ? { detail } : {}) });
 }
 

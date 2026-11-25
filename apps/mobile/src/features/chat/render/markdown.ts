@@ -1,5 +1,5 @@
 import MarkdownIt from 'markdown-it';
-import { normalizeMathMarkup } from '@/lib/latex-normalize';
+import { mapMarkdownProse, normalizeMathMarkup } from '@/lib/latex-normalize';
 import { parseModelThinkingSegments } from '@/lib/think-segments';
 
 const markdown = new MarkdownIt({
@@ -40,7 +40,8 @@ markdown.inline.ruler.before('escape', 'mobile_math', (state, silent) => {
   const body = end < 0 ? '' : source.slice(at + open, end);
   if (
     !body.trim() ||
-    (!display && body.includes('\n')) ||
+    body.includes('\n') ||
+    (escaped && body.includes(display ? '\\[' : '\\(')) ||
     (!escaped &&
       !display &&
       (/^\s|\s$/.test(body) || /\d/.test(source[end + 1] ?? '')))
@@ -79,7 +80,15 @@ markdown.block.ruler.before(
       body.length < MATH_LIMIT
     ) {
       next += 1;
-      body += '\n' + state.src.slice(state.bMarks[next], state.eMarks[next]);
+      const candidate = state.src.slice(state.bMarks[next], state.eMarks[next]);
+      const trimmed = candidate.trim();
+      // An unfinished formula must not absorb later Markdown or a new opener.
+      if (
+        /^(?:\x60{3,}|~{3,}|#{1,6}(?:\s|$)|\\\[)/.test(trimmed) ||
+        (trimmed.startsWith('$$') && trimmed !== '$$')
+      )
+        return false;
+      body += '\n' + candidate;
     }
     if (body.length > MATH_LIMIT || !body.trimEnd().endsWith(close))
       return false;
@@ -126,9 +135,26 @@ export function parseMarkdown(
 }
 
 export function visibleAnswer(text: string): string {
-  if (!text.includes('<')) return text;
-  return parseModelThinkingSegments(text)
+  if (!/<\s*think(?:ing)?\b/i.test(text)) return text;
+  let marker = '\u0000dt-inline-code:';
+  while (text.includes(marker)) marker += ':';
+  const inlineCode: string[] = [];
+  const protectedText = mapMarkdownProse(text, prose =>
+    prose.replace(
+      /(^|[^\x60])(\x60+)((?:(?!\n[ \t]*\n)[\s\S])*?)\2(?!\x60)/g,
+      (match, prefix: string, delimiter: string, body: string) => {
+        if (!/<\s*\/?\s*think(?:ing)?\b/i.test(body)) return match;
+        const index = inlineCode.push(delimiter + body + delimiter) - 1;
+        return prefix + marker + index + '\u0000';
+      },
+    ),
+  );
+  const answer = parseModelThinkingSegments(protectedText)
     .filter(segment => segment.kind === 'text')
     .map(segment => segment.content)
     .join('');
+  return answer.replace(
+    new RegExp(marker + '(\\d+)\\u0000', 'g'),
+    (_, index: string) => inlineCode[Number(index)],
+  );
 }

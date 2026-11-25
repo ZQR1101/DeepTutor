@@ -34,7 +34,12 @@ export function mathSvg(tex: string, display: boolean): MathGraphic | null {
       .getAttribute(svg, 'viewBox')
       ?.split(/\s+/)
       .map(Number);
-    if (viewBox?.length === 4 && viewBox[2] > 0 && viewBox[3] > 0) {
+    if (
+      viewBox?.length === 4 &&
+      viewBox.every(Number.isFinite) &&
+      viewBox[2] > 0 &&
+      viewBox[3] > 0
+    ) {
       const xml = adaptor.outerHTML(svg);
       // Only MathJax's geometric output goes to the native SVG renderer.
       // Do not permit links, images or SVG content with an external reference.

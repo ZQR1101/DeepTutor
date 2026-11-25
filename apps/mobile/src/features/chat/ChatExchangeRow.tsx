@@ -78,7 +78,7 @@ function SourceCard({
 
 export type LoadMessageDetails = SessionApi['getMessageDetails'];
 
-export const ChatExchangeRow = memo(function ChatExchangeRow({
+export const ChatExchangeRow = memo(function ExchangeRow({
   item,
   active,
   sessionId,

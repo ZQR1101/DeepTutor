@@ -85,6 +85,43 @@ test('deduplicates source frames, keeps evidence, and associates only exact unam
   expect(uniqueSourceForUrl(ambiguous.sources, url)).toBeUndefined();
 });
 
+test('an LLM round is not a tool call and a tool failure can supply its detail later', () => {
+  const modelStep = projectTurnEvent(emptyTurnDetails, {
+    type: 'progress',
+    metadata: {
+      trace_group: 'stage',
+      trace_kind: 'call_status',
+      call_kind: 'agent_loop_round',
+      call_id: 'round-1',
+      call_state: 'running',
+    },
+  });
+  expect(modelStep).toBe(emptyTurnDetails);
+  const failed = projectTurnEvent(modelStep, {
+    type: 'progress',
+    metadata: {
+      trace_group: 'tool_call',
+      trace_kind: 'call_status',
+      call_id: 'call-1',
+      tool: 'rag',
+      call_state: 'error',
+    },
+  });
+  const returned = projectTurnEvent(failed, {
+    type: 'tool_result',
+    metadata: { call_id: 'call-1', tool: 'rag' },
+    content: '索引不可用',
+  });
+  expect(returned.steps).toEqual([
+    {
+      id: 'call:call-1',
+      label: '检索知识库',
+      state: 'failed',
+      detail: '索引不可用',
+    },
+  ]);
+});
+
 test('history requests the selected assistant journal and validates history scope', async () => {
   const mock = jest
     .fn()
