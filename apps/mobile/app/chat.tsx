@@ -34,6 +34,7 @@ export default function ChatRoute() {
         knowledge.refresh().catch(() => {});
       }}
       onManageKnowledge={() => router.push('/knowledge')}
+      onUploadFiles={() => router.push({ pathname: '/knowledge', params: { intent: 'upload' } })}
       onOpenSettings={() => router.push('/settings')}
       onOpenSessions={() => router.push('/sessions')}
     />

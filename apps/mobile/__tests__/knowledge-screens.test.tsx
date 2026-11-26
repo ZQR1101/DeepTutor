@@ -121,7 +121,7 @@ test('a failed first load offers a retry and keeps the reason', () => {
   expect(onRetry).toHaveBeenCalledTimes(1);
 });
 
-test('a row says how much is in the base and whether it is shared or read-only', () => {
+test('a knowledge base row shows its name alone', () => {
   list({
     bases: [
       base(),
@@ -135,8 +135,9 @@ test('a row says how much is in the base and whether it is shared or read-only',
       }),
     ],
   });
-  expect(screen.getByText('2 份文档')).toBeTruthy();
-  expect(screen.getByText('1 份文档 · 与你共享 · 只读')).toBeTruthy();
+  expect(button('shared')).toBeTruthy();
+  expect(screen.queryByText('Mechanics')).toBeNull();
+  expect(screen.queryByText(/份文档|与你共享|只读|就绪/)).toBeNull();
 });
 
 test('opening a row passes the handle the server routes on', () => {

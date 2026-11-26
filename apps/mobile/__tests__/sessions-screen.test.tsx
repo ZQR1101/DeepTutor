@@ -1,11 +1,12 @@
-import { Alert } from 'react-native';
 import {
+  act,
   cleanup,
   fireEvent,
-  render,
+  render as renderScreen,
   screen,
   waitFor,
 } from '@testing-library/react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import {
   SessionsScreen,
@@ -14,6 +15,19 @@ import {
 import type { SessionSummary } from '../src/services/sessionApi';
 
 afterEach(cleanup);
+
+function render(element: React.JSX.Element) {
+  return renderScreen(element, {
+    wrapper: ({ children }) => (
+      <SafeAreaProvider initialMetrics={{
+        frame: { x: 0, y: 0, width: 360, height: 640 },
+        insets: { top: 0, right: 0, bottom: 0, left: 0 },
+      }}>
+        {children}
+      </SafeAreaProvider>
+    ),
+  });
+}
 
 /**
  * A container's accessible name is derived from its subtree, so a query by role
@@ -55,16 +69,19 @@ function sessions(
     busySessionId: null,
     onOpen: jest.fn(),
     onNewChat: jest.fn(),
+    onOpenLearning: jest.fn(),
+    onOpenKnowledge: jest.fn(),
     onRefresh: jest.fn(),
     onLoadMore: jest.fn(),
     onRetry: jest.fn(),
     onRename: jest.fn(async () => {}),
     onDelete: jest.fn(async () => {}),
+    onSetPinned: jest.fn(async () => {}),
     ...overrides,
   };
 }
 
-test('renders rows and flags the one with a running turn', () => {
+test('shows only the conversation names and still opens the selected row', () => {
   const onOpen = jest.fn();
   render(
     <SessionsScreen
@@ -75,7 +92,8 @@ test('renders rows and flags the one with a running turn', () => {
     />,
   );
   expect(screen.getByText('Conversation a')).toBeTruthy();
-  expect(screen.getByText('进行中')).toBeTruthy();
+  expect(screen.getByText('Conversation b')).toBeTruthy();
+  expect(screen.queryByText(/条消息|进行中|\d+\/\d+/)).toBeNull();
   fireEvent.press(screen.getByText('Conversation a'));
   expect(onOpen).toHaveBeenCalledWith('a');
 });
@@ -107,10 +125,23 @@ test('a new chat is one press away', () => {
   expect(onNewChat).toHaveBeenCalledTimes(1);
 });
 
+test('the long-press menu has three actions and dismisses on an outside tap', () => {
+  render(<SessionsScreen {...sessions({ sessions: [row('a')] })} />);
+  fireEvent(button('Conversation a'), 'longPress');
+  expect(button('置顶')).toBeTruthy();
+  expect(button('重命名')).toBeTruthy();
+  expect(button('删除')).toBeTruthy();
+  expect(screen.queryByLabelText('取消')).toBeNull();
+  fireEvent.press(screen.getByTestId('session-menu-backdrop', { includeHiddenElements: true }));
+  expect(screen.queryByLabelText('置顶')).toBeNull();
+});
+
 test('renaming sends the trimmed title the learner typed', async () => {
   const onRename = jest.fn(async () => {});
   render(<SessionsScreen {...sessions({ sessions: [row('a')], onRename })} />);
 
+  expect(screen.queryByLabelText('重命名')).toBeNull();
+  fireEvent(button('Conversation a'), 'longPress');
   fireEvent.press(button('重命名'));
   fireEvent.changeText(screen.getByLabelText('标题'), '  Halves  ');
   fireEvent.press(button('保存'));
@@ -124,6 +155,7 @@ test('a failed rename keeps the dialog open and explains itself', async () => {
   });
   render(<SessionsScreen {...sessions({ sessions: [row('a')], onRename })} />);
 
+  fireEvent(button('Conversation a'), 'longPress');
   fireEvent.press(button('重命名'));
   fireEvent.press(button('保存'));
 
@@ -135,45 +167,48 @@ test('a failed rename keeps the dialog open and explains itself', async () => {
   expect(screen.getByLabelText('标题')).toBeTruthy();
 });
 
-test('deleting asks before removing anything', () => {
+test('deleting asks before removing anything', async () => {
   const onDelete = jest.fn(async () => {});
-  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
-  try {
-    render(<SessionsScreen {...sessions({ sessions: [row('a')], onDelete })} />);
-    fireEvent.press(button('删除'));
-    expect(onDelete).not.toHaveBeenCalled();
-    const choices = alert.mock.calls[0][2] as {
-      text: string;
-      onPress?: () => void;
-    }[];
-    choices.find(choice => choice.text === '删除')?.onPress?.();
-    expect(onDelete).toHaveBeenCalledWith('a');
-  } finally {
-    alert.mockRestore();
-  }
+  render(<SessionsScreen {...sessions({ sessions: [row('a')], onDelete })} />);
+  expect(screen.queryByLabelText('删除')).toBeNull();
+  fireEvent(button('Conversation a'), 'longPress');
+  fireEvent.press(button('删除'));
+  expect(onDelete).not.toHaveBeenCalled();
+  fireEvent.press(button('确认删除'));
+  await waitFor(() => expect(onDelete).toHaveBeenCalledWith('a'));
 });
 
 test('a rejected delete is reported without removing the row', async () => {
   const onDelete = jest.fn(async () => {
     throw new Error('nope');
   });
-  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
-  try {
-    render(<SessionsScreen {...sessions({ sessions: [row('a')], onDelete })} />);
-    fireEvent.press(button('删除'));
-    const choices = alert.mock.calls[0][2] as {
-      text: string;
-      onPress?: () => void;
-    }[];
-    choices.find(choice => choice.text === '删除')?.onPress?.();
+  render(<SessionsScreen {...sessions({ sessions: [row('a')], onDelete })} />);
+  fireEvent(button('Conversation a'), 'longPress');
+  fireEvent.press(button('删除'));
+  fireEvent.press(button('确认删除'));
+  expect(await screen.findByText('删除会话失败，请重试。')).toBeTruthy();
+  fireEvent.press(button('取消'));
+  expect(screen.getByText('Conversation a')).toBeTruthy();
+});
 
-    await waitFor(() =>
-      expect(
-        screen.getByText('删除会话失败，请重试。'),
-      ).toBeTruthy(),
-    );
-    expect(screen.getByText('Conversation a')).toBeTruthy();
-  } finally {
-    alert.mockRestore();
-  }
+test('pinned conversations are first and long press can pin or unpin', async () => {
+  const onSetPinned = jest.fn(async () => {});
+  render(<SessionsScreen {...sessions({
+    sessions: [row('a'), row('b', { pinned: true })],
+    onSetPinned,
+  })} />);
+  const conversationRows = screen.getAllByRole('button', { name: /^Conversation / });
+  expect(conversationRows[0].props.accessibilityLabel).toBe('Conversation b');
+  fireEvent(button('Conversation b'), 'longPress');
+  await act(async () => {
+    fireEvent.press(button('取消置顶'));
+  });
+  expect(onSetPinned).toHaveBeenCalledWith('b', false);
+  expect(screen.queryByLabelText('取消置顶')).toBeNull();
+  fireEvent(button('Conversation a'), 'longPress');
+  await act(async () => {
+    fireEvent.press(button('置顶'));
+  });
+  expect(onSetPinned).toHaveBeenCalledWith('a', true);
+  expect(screen.queryByLabelText('置顶')).toBeNull();
 });

@@ -50,6 +50,7 @@ function chat(overrides: Partial<ChatScreenProps> = {}): ChatScreenProps {
     onToggleKnowledge: jest.fn(),
     onRefreshKnowledge: jest.fn(),
     onManageKnowledge: jest.fn(),
+    onUploadFiles: jest.fn(),
     onOpenSettings: jest.fn(),
     onOpenSessions: jest.fn(),
     ...overrides,
@@ -64,6 +65,21 @@ test('the header names the open conversation and reaches the list', () => {
   expect(screen.getByText('已连接 · 已保存到服务器')).toBeTruthy();
   fireEvent.press(button('历史会话'));
   expect(props.onOpenSessions).toHaveBeenCalledTimes(1);
+});
+
+test('the composer tools provide separate paths for using a library and uploading files', () => {
+  const props = chat();
+  render(<ChatScreen {...props} />);
+
+  expect(screen.queryByLabelText('上传文件到知识库')).toBeNull();
+  fireEvent.press(button('打开对话工具'));
+  fireEvent.press(button('上传文件到知识库'));
+  expect(props.onUploadFiles).toHaveBeenCalledTimes(1);
+  expect(screen.queryByLabelText('上传文件到知识库')).toBeNull();
+
+  fireEvent.press(button('打开对话工具'));
+  fireEvent.press(button('选择知识库'));
+  expect(screen.getByText('下一次回答可以参考所选知识库的文档。')).toBeTruthy();
 });
 
 test('a running turn offers Stop instead of Send', () => {

@@ -67,6 +67,7 @@ test('lists a page and reports whether another page exists', async () => {
       updatedAt: 200,
       messageCount: 4,
       lastMessage: 'One of three equal parts.',
+      pinned: false,
       status: 'running',
       activeTurnId: 'turn-9',
     },
@@ -75,6 +76,20 @@ test('lists a page and reports whether another page exists', async () => {
   expect(fetcher.mock.calls[0][0]).toBe(
     `${origin}/api/sessions?limit=1&offset=0`,
   );
+});
+
+test('updates the server pin and checks the saved preference', async () => {
+  const saved = api(response(200, {
+    session: { ...row, preferences: { ...row.preferences, pinned: true } },
+  }));
+  await expect(saved.api.setPinned('s1', true)).resolves.toBe(true);
+  expect(saved.fetcher.mock.calls[0][0]).toBe(`${origin}/api/sessions/s1/organization`);
+  expect(saved.fetcher.mock.calls[0][1]).toMatchObject({
+    method: 'PATCH',
+    body: JSON.stringify({ pinned: true }),
+  });
+  const ignored = api(response(200, { session: row }));
+  await expect(ignored.api.setPinned('s1', true)).rejects.toThrow();
 });
 
 test('a short page ends the index and the workspace scope is forwarded', async () => {

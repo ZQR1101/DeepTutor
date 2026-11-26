@@ -1,6 +1,8 @@
 import { useCallback, useRef, useState } from 'react';
 import {
   FlatList,
+  ActivityIndicator,
+  Keyboard,
   Pressable,
   StyleSheet,
   Text,
@@ -10,6 +12,7 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import type { RuntimeConnectionState } from '@/features/chat/transport/TurnRuntimeClient';
 import type {
   ChatStatus,
@@ -52,6 +55,7 @@ export type ChatScreenProps = {
   onToggleKnowledge: (ref: string) => void;
   onRefreshKnowledge: () => void;
   onManageKnowledge: () => void;
+  onUploadFiles: () => void;
   onOpenSettings: () => void;
   onOpenSessions: () => void;
 };
@@ -64,26 +68,53 @@ const connectionCopy: Record<RuntimeConnectionState, string> = {
   stopped: '未连接',
 };
 
-function CompactAction({ title, label, disabled, onPress }: {
-  title: string;
-  label?: string;
+const icons = {
+  history: 'M4 6h16M4 12h16M4 18h10',
+  newChat: 'M12 20H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h9m-2 10 1-4 6-6 3 3-6 6-4 1z',
+  settings: 'M4 7h16M4 17h16M8 4v6m8 4v6',
+  add: 'M12 5v14M5 12h14',
+  close: 'm6 6 12 12M18 6 6 18',
+  send: 'M12 19V5m-6 6 6-6 6 6',
+  stop: 'M7 7h10v10H7z',
+  library: 'M4 5h5v14H4zM9 5h5v14H9zM15 6l3-1 3 13-3 1z',
+  upload: 'M7 19H5V5h8l5 5v2m-5-7v5h5m-3 11v-7m-4 4 4-4 4 4',
+};
+
+function ChatIcon({ icon, color }: { icon: keyof typeof icons; color: string }) {
+  return (
+    <Svg width={21} height={21} viewBox="0 0 24 24">
+      <Path d={icons[icon]} fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+function IconButton({ icon, label, disabled, expanded, primary, busy, onPress }: {
+  icon: keyof typeof icons;
+  label: string;
   disabled?: boolean;
+  expanded?: boolean;
+  primary?: boolean;
+  busy?: boolean;
   onPress: () => void;
 }) {
   const theme = useTheme();
+  const color = primary ? theme.onPrimary : theme.text;
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label ?? title}
-      accessibilityState={{ disabled }}
-      disabled={disabled}
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: !!(disabled || busy), expanded, busy }}
+      disabled={disabled || busy}
       onPress={onPress}
       style={({ pressed }) => [
-        styles.compactAction,
-        { opacity: disabled ? 0.4 : pressed ? 0.65 : 1 },
+        styles.iconButton,
+        {
+          backgroundColor: primary ? theme.primary : theme.secondary,
+          opacity: disabled ? 0.45 : pressed ? 0.7 : 1,
+        },
       ]}
     >
-      <Text style={[styles.compactLabel, { color: theme.text }]}>{title}</Text>
+      {busy ? <ActivityIndicator color={color} /> : <ChatIcon icon={icon} color={color} />}
     </Pressable>
   );
 }
@@ -142,6 +173,7 @@ export function ChatScreen({
   onToggleKnowledge,
   onRefreshKnowledge,
   onManageKnowledge,
+  onUploadFiles,
   onOpenSettings,
   onOpenSessions,
 }: ChatScreenProps) {
@@ -150,6 +182,7 @@ export function ChatScreen({
   const [replying, setReplying] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
   const list = useRef<FlatList<ChatExchange>>(null);
   const follow = useRef(true);
   const awaitingInput = status === 'waiting_for_input';
@@ -204,10 +237,12 @@ export function ChatScreen({
     follow.current = true;
     setDraft('');
     setActionError(null);
+    setToolsOpen(false);
   }
 
   async function submit() {
     if (!canSubmit) return;
+    setToolsOpen(false);
     setActionError(null);
     follow.current = true;
     if (!awaitingInput) {
@@ -241,187 +276,218 @@ export function ChatScreen({
           { backgroundColor: theme.surface, borderColor: theme.border },
         ]}
       >
-        <View style={styles.heading}>
-          <Text
-            accessibilityRole="header"
-            numberOfLines={1}
-            style={[styles.title, { color: theme.text }]}
-          >
-            {sessionTitle || 'DeepTutor'}
-          </Text>
-          <Text
-            accessibilityLiveRegion="polite"
-            style={[styles.status, { color: theme.muted }]}
-          >
-            {connectionCopy[connection]}
-            {sessionId ? ' · 已保存到服务器' : ''}
-          </Text>
+        <View style={styles.headerSide}>
+          <IconButton icon="history" label="历史会话" onPress={() => {
+            Keyboard.dismiss();
+            onOpenSessions();
+          }} />
         </View>
-        <View style={styles.headerActions}>
-          <CompactAction title="历史" label="历史会话" onPress={onOpenSessions} />
-          <CompactAction title="新建" label="新建对话" disabled={!canStartNewChat && !canLeaveTurn} onPress={newChat} />
-          <CompactAction title="设置" onPress={onOpenSettings} />
+        <Text accessibilityRole="header" style={[styles.headerTitle, { color: theme.text }]}>聊天</Text>
+        <View style={[styles.headerSide, styles.headerActions]}>
+          <IconButton icon="settings" label="设置" onPress={onOpenSettings} />
+          <IconButton icon="newChat" label="新建对话" disabled={!canStartNewChat && !canLeaveTurn} onPress={newChat} />
         </View>
       </View>
-
-      {recovery ? (
-        <View style={styles.bannerRow}>
-          <Text
-            accessibilityLiveRegion="polite"
-            style={[
-              styles.banner,
-              { color: theme.text, backgroundColor: theme.secondary },
-            ]}
-          >
-            {recovery.message}
-          </Text>
-          <View style={styles.bannerActions}>
-            {recovery.kind === 'unavailable' ? null : (
-              <Action
-                title="关闭"
-                tone="secondary"
-                onPress={dismissRecovery}
-              />
-            )}
-          </View>
-        </View>
-      ) : null}
-
-      {history === 'loading' ? (
-        <View style={styles.center} accessibilityLiveRegion="polite">
-          <Text style={[styles.status, { color: theme.muted }]}>
-            正在加载会话…
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          ref={list}
-          data={messages}
-          keyExtractor={exchangeKey}
-          contentContainerStyle={styles.conversation}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-          onScrollBeginDrag={browse}
-          onScrollEndDrag={settleScroll}
-          onMomentumScrollBegin={browse}
-          onMomentumScrollEnd={settleScroll}
-          onContentSizeChange={followLatest}
-          initialNumToRender={8}
-          maxToRenderPerBatch={6}
-          windowSize={7}
-          renderItem={renderExchange}
-          ListEmptyComponent={
-            history === 'failed' ? (
-              <View style={styles.center}>
-                <Text style={[styles.status, { color: theme.muted }]}>
-                  无法加载此会话。
-                </Text>
-                <Action
-                  title="重试"
-                  tone="secondary"
-                  onPress={() => retrySession()}
-                />
-              </View>
-            ) : (
-              <View style={styles.empty}>
-                <Text
-                  accessibilityRole="header"
-                  style={[styles.emptyTitle, { color: theme.text }]}
-                >
-                  今天想学什么？
-                </Text>
-                <Text style={[styles.status, { color: theme.muted }]}>
-                  提出一个问题，开始对话。
-                </Text>
-              </View>
-            )
-          }
-        />
-      )}
-
-      <View
-        style={[
-          styles.composer,
-          { backgroundColor: theme.surface, borderColor: theme.border },
-        ]}
-      >
-        <ErrorNotice message={actionError || error} />
-        {connection === 'stopped' || connection === 'idle' || canLeaveTurn ? (
-          <Action
-            title="重新连接"
-            tone="secondary"
-            onPress={retryConnection}
-          />
-        ) : null}
-        {awaitingInput ? (
-          <Text
-            accessibilityLiveRegion="polite"
-            style={[styles.status, { color: theme.text }]}
-          >
-            {waitingPrompt || 'DeepTutor 正在等你回复。'}
-          </Text>
-        ) : null}
-        {progress ? (
-          <Text
-            accessibilityLiveRegion="polite"
-            style={[styles.status, { color: theme.muted }]}
-          >
-            {progress}
-          </Text>
-        ) : null}
-        {status === 'cancelled' ? (
-          <Text
-            accessibilityLiveRegion="polite"
-            style={[styles.status, { color: theme.muted }]}
-          >
-            已停止回复。
-          </Text>
-        ) : null}
-        <View style={[styles.inputShell, { borderColor: theme.inputBorder, backgroundColor: theme.background }]}>
-          <TextInput
-            accessibilityLabel={awaitingInput ? '回复' : '消息'}
-            value={draft}
-            onChangeText={setDraft}
-            editable={composing && !replying}
-            placeholder={awaitingInput ? '输入回复' : '输入你的问题'}
-            placeholderTextColor={theme.muted}
-            selectionColor={theme.primary}
-            keyboardAppearance={theme.dark ? 'dark' : 'light'}
-            style={[styles.composerInput, { color: theme.text }]}
-            multiline
-          />
-          <View style={styles.composerRow}>
-            <CompactAction
-              title={knowledgeBases.length ? '知识库 · ' + knowledgeBases.length : '知识库'}
-              onPress={() => setPickerOpen(true)}
-            />
-            {knowledgeNames ? (
-              <Text numberOfLines={1} style={[styles.selectedKnowledge, { color: theme.muted }]}>
-                {knowledgeNames}
+      <View style={styles.chatBody}>
+        {sessionTitle || sessionId || connection !== 'connected' ? (
+          <View style={styles.heading}>
+            {sessionTitle ? (
+              <Text
+                accessibilityRole="header"
+                numberOfLines={1}
+                style={[styles.title, { color: theme.text }]}
+              >
+                {sessionTitle}
               </Text>
-            ) : <View style={styles.selectedKnowledge} />}
-            {awaitingInput ? (
-              <CompactAction title="停止任务" disabled={replying} onPress={stop} />
             ) : null}
+            <Text
+              accessibilityLiveRegion="polite"
+              style={[styles.status, { color: theme.muted }]}
+            >
+              {connectionCopy[connection]}
+              {sessionId ? ' · 已保存到服务器' : ''}
+            </Text>
+          </View>
+        ) : null}
+
+        {recovery ? (
+          <View style={styles.bannerRow}>
+            <Text
+              accessibilityLiveRegion="polite"
+              style={[
+                styles.banner,
+                { color: theme.text, backgroundColor: theme.secondary },
+              ]}
+            >
+              {recovery.message}
+            </Text>
+            <View style={styles.bannerActions}>
+              {recovery.kind === 'unavailable' ? null : (
+                <Action
+                  title="关闭"
+                  tone="secondary"
+                  onPress={dismissRecovery}
+                />
+              )}
+            </View>
+          </View>
+        ) : null}
+
+        {history === 'loading' ? (
+          <View style={styles.center} accessibilityLiveRegion="polite">
+            <Text style={[styles.status, { color: theme.muted }]}>
+              正在加载会话…
+            </Text>
+          </View>
+        ) : (
+          <FlatList
+            ref={list}
+            data={messages}
+            keyExtractor={exchangeKey}
+            contentContainerStyle={styles.conversation}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            onScrollBeginDrag={browse}
+            onScrollEndDrag={settleScroll}
+            onMomentumScrollBegin={browse}
+            onMomentumScrollEnd={settleScroll}
+            onContentSizeChange={followLatest}
+            initialNumToRender={8}
+            maxToRenderPerBatch={6}
+            windowSize={7}
+            renderItem={renderExchange}
+            ListEmptyComponent={
+              history === 'failed' ? (
+                <View style={styles.center}>
+                  <Text style={[styles.status, { color: theme.muted }]}>
+                    无法加载此会话。
+                  </Text>
+                  <Action
+                    title="重试"
+                    tone="secondary"
+                    onPress={() => retrySession()}
+                  />
+                </View>
+              ) : (
+                <View style={styles.empty}>
+                  <Text
+                    accessibilityRole="header"
+                    style={[styles.emptyTitle, { color: theme.text }]}
+                  >
+                    今天想学什么？
+                  </Text>
+                </View>
+              )
+            }
+          />
+        )}
+
+        <View
+          style={[
+            styles.composer,
+            { backgroundColor: theme.surface, borderColor: theme.border },
+          ]}
+        >
+          <ErrorNotice message={actionError || error} />
+          {connection === 'stopped' || connection === 'idle' || canLeaveTurn ? (
+            <Action
+              title="重新连接"
+              tone="secondary"
+              onPress={retryConnection}
+            />
+          ) : null}
+          {awaitingInput ? (
+            <Text
+              accessibilityLiveRegion="polite"
+              style={[styles.status, { color: theme.text }]}
+            >
+              {waitingPrompt || 'DeepTutor 正在等你回复。'}
+            </Text>
+          ) : null}
+          {progress ? (
+            <Text
+              accessibilityLiveRegion="polite"
+              style={[styles.status, { color: theme.muted }]}
+            >
+              {progress}
+            </Text>
+          ) : null}
+          {status === 'cancelled' ? (
+            <Text
+              accessibilityLiveRegion="polite"
+              style={[styles.status, { color: theme.muted }]}
+            >
+              已停止回复。
+            </Text>
+          ) : null}
+          {toolsOpen ? (
+            <View style={[styles.tools, { borderColor: theme.border, backgroundColor: theme.background }]}>
+              <Pressable accessibilityRole="button" accessibilityLabel="选择知识库" style={styles.toolAction} onPress={() => {
+                setToolsOpen(false);
+                setPickerOpen(true);
+              }}>
+                <ChatIcon icon="library" color={theme.primary} />
+                <Text style={[styles.toolLabel, { color: theme.text }]}>选择知识库</Text>
+              </Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel="上传文件到知识库" style={styles.toolAction} onPress={() => {
+                setToolsOpen(false);
+                onUploadFiles();
+              }}>
+                <ChatIcon icon="upload" color={theme.primary} />
+                <Text style={[styles.toolLabel, { color: theme.text }]}>上传文件到知识库</Text>
+              </Pressable>
+            </View>
+          ) : null}
+          {knowledgeNames ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`知识库 · ${knowledgeBases.length}`}
+              onPress={() => {
+                Keyboard.dismiss();
+                setToolsOpen(false);
+                setPickerOpen(true);
+              }}
+              style={[styles.knowledgeChip, { backgroundColor: theme.secondary }]}
+            >
+              <ChatIcon icon="library" color={theme.primary} />
+              <Text numberOfLines={1} style={[styles.knowledgeName, { color: theme.text }]}>{knowledgeNames}</Text>
+            </Pressable>
+          ) : null}
+          {awaitingInput ? (
+            <Action title="停止任务" tone="secondary" disabled={replying} onPress={stop} />
+          ) : null}
+          <View style={[styles.inputShell, { borderColor: theme.border, backgroundColor: theme.background }]}>
+            <IconButton
+              icon={toolsOpen ? 'close' : 'add'}
+              label={toolsOpen ? '关闭对话工具' : '打开对话工具'}
+              expanded={toolsOpen}
+              onPress={() => {
+                if (!toolsOpen) Keyboard.dismiss();
+                setToolsOpen(!toolsOpen);
+              }}
+            />
+            <TextInput
+              accessibilityLabel={awaitingInput ? '回复' : '消息'}
+              value={draft}
+              onChangeText={setDraft}
+              onFocus={() => setToolsOpen(false)}
+              editable={composing && !replying}
+              placeholder={awaitingInput ? '输入回复' : '输入你的问题'}
+              placeholderTextColor={theme.muted}
+              selectionColor={theme.primary}
+              keyboardAppearance={theme.dark ? 'dark' : 'light'}
+              style={[styles.composerInput, { color: theme.text }]}
+              multiline
+            />
             {composing ? (
-              <Action
-                title={awaitingInput ? '回复' : '发送'}
-                disabled={!canSubmit && !replying}
-                busy={replying}
-                onPress={submit}
-              />
+              <IconButton icon="send" label={awaitingInput ? '回复' : '发送'} primary disabled={!canSubmit && !replying} busy={replying} onPress={submit} />
             ) : (
-              <Action
-                title="停止"
-                tone="secondary"
-                busy={status === 'cancelling'}
-                onPress={stop}
-              />
+              <IconButton icon="stop" label="停止" primary busy={status === 'cancelling'} onPress={stop} />
             )}
           </View>
         </View>
-      </View>
 
+      </View>
       <KnowledgePicker
         visible={pickerOpen}
         bases={knowledgeOptions}
@@ -448,12 +514,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: spacing.md,
+    gap: spacing.xs,
   },
-  heading: { flex: 1, minWidth: 0, gap: 2 },
-  headerActions: { flexDirection: 'row', alignItems: 'center' },
-  compactAction: { minHeight: 44, justifyContent: 'center', paddingHorizontal: spacing.sm },
-  compactLabel: { fontSize: 14, fontWeight: '600' },
+  heading: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, gap: 2 },
+  headerSide: { flex: 1, minWidth: 92 },
+  headerTitle: { fontSize: 17, fontWeight: '700' },
+  chatBody: { flex: 1 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: spacing.xs },
+  iconButton: { width: 44, height: 44, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
   title: { fontSize: 19, fontWeight: '700' },
   status: { fontSize: 13, lineHeight: 19 },
   bannerRow: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, gap: spacing.sm },
@@ -476,7 +544,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     padding: spacing.md,
-    gap: spacing.sm,
+    alignItems: 'center',
   },
   emptyTitle: { fontSize: textSize.heading, fontWeight: '700' },
   composer: {
@@ -485,12 +553,18 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
-  composerRow: {
+  tools: { borderWidth: 1, borderRadius: radius.lg, padding: spacing.xs },
+  toolAction: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.md, minHeight: 48 },
+  toolLabel: { fontSize: textSize.body, fontWeight: '600', flexShrink: 1 },
+  knowledgeChip: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, alignSelf: 'flex-start', maxWidth: '100%', minHeight: 44, paddingHorizontal: spacing.md, borderRadius: radius.md },
+  knowledgeName: { flexShrink: 1, fontSize: textSize.small },
+  inputShell: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     gap: spacing.xs,
+    borderWidth: 1,
+    borderRadius: 22,
+    padding: spacing.xs,
   },
-  inputShell: { borderWidth: 1, borderRadius: radius.lg, paddingHorizontal: spacing.sm, paddingBottom: spacing.xs },
-  composerInput: { minHeight: 48, maxHeight: 120, padding: spacing.sm, fontSize: 16, lineHeight: 23 },
-  selectedKnowledge: { flex: 1, minWidth: 0, fontSize: 12 },
+  composerInput: { flex: 1, minWidth: 0, minHeight: 44, maxHeight: 120, paddingHorizontal: spacing.sm, paddingVertical: 10, fontSize: 16, lineHeight: 23 },
 });

@@ -9,6 +9,7 @@ import SessionsRoute from '../app/sessions';
 import IndexRoute from '../app/index';
 import KnowledgeDetailRoute from '../app/knowledge/detail';
 import KnowledgeListRoute from '../app/knowledge/index';
+import LearningRoute from '../app/learning';
 import LoginRoute from '../app/login';
 import ServerRoute from '../app/server';
 import SettingsRoute from '../app/settings';
@@ -30,6 +31,7 @@ const routes = {
   chat: ChatRoute,
   sessions: SessionsRoute,
   settings: SettingsRoute,
+  learning: LearningRoute,
   'knowledge/index': KnowledgeListRoute,
   'knowledge/detail': KnowledgeDetailRoute,
 };
@@ -136,6 +138,48 @@ test('a warm chat link reuses the existing runtime with Settings open', async ()
   testRouter.navigate(redirectSystemPath({ path: 'deeptutor-mobile://chat' }));
   await waitFor(() => expect(getPathname()).toBe('/chat'));
   expect(mount).toHaveBeenCalledTimes(1);
+});
+
+test('closing history returns to the same chat with its draft intact', async () => {
+  mockSession('chat');
+  const { getPathname } = renderRouter(routes);
+  await waitFor(() => expect(getPathname()).toBe('/chat'));
+  fireEvent.changeText(screen.getByPlaceholderText('输入你的问题'), '未发送的草稿');
+  fireEvent.press(screen.getByRole('button', { name: '历史会话' }));
+  await waitFor(() => expect(getPathname()).toBe('/sessions'));
+  fireEvent.press(screen.getByRole('button', { name: '收起历史会话' }));
+  await waitFor(() => expect(getPathname()).toBe('/chat'));
+  expect(screen.getByDisplayValue('未发送的草稿')).toBeTruthy();
+});
+
+test('the drawer opens blank learning records and back returns directly to the chat draft', async () => {
+  mockSession('chat');
+  const { getPathname } = renderRouter(routes);
+  await waitFor(() => expect(getPathname()).toBe('/chat'));
+  fireEvent.changeText(screen.getByPlaceholderText('输入你的问题'), '复习计划');
+  expect(screen.queryByLabelText('学习记录')).toBeNull();
+  fireEvent.press(screen.getByRole('button', { name: '历史会话' }));
+  await waitFor(() => expect(getPathname()).toBe('/sessions'));
+  fireEvent.press(screen.getByRole('button', { name: '学习记录' }));
+  await waitFor(() => expect(getPathname()).toBe('/learning'));
+  expect(screen.queryByRole('button', { name: '收起历史会话' })).toBeNull();
+  expect(screen.queryByPlaceholderText('输入你的问题')).toBeNull();
+  expect(screen.getByRole('header', { name: '学习记录' })).toBeTruthy();
+  fireEvent.press(screen.getByRole('button', { name: '返回聊天' }));
+  await waitFor(() => expect(getPathname()).toBe('/chat'));
+  expect(screen.getByDisplayValue('复习计划')).toBeTruthy();
+});
+
+test('the drawer opens the knowledge management page', async () => {
+  mockSession('chat');
+  const { getPathname } = renderRouter(routes);
+  await waitFor(() => expect(getPathname()).toBe('/chat'));
+  fireEvent.press(screen.getByRole('button', { name: '历史会话' }));
+  await waitFor(() => expect(getPathname()).toBe('/sessions'));
+  fireEvent.press(screen.getByRole('button', { name: '知识库管理' }));
+  await waitFor(() => expect(getPathname()).toBe('/knowledge'));
+  fireEvent.press(screen.getByRole('button', { name: '返回' }));
+  await waitFor(() => expect(getPathname()).toBe('/chat'));
 });
 
 test('a protected deep link routes to server setup while disconnected', async () => {

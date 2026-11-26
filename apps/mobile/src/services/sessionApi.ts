@@ -55,6 +55,7 @@ export interface SessionSummary {
   updatedAt: number;
   messageCount: number;
   lastMessage: string;
+  pinned?: boolean;
   status: TurnStatus;
   /** The turn still holding the session, or "" when the session is free. */
   activeTurnId: string;
@@ -195,6 +196,7 @@ function parseSummary(value: unknown): SessionSummary {
     updatedAt: count(raw.updated_at),
     messageCount: count(raw.message_count),
     lastMessage: text(raw.last_message),
+    pinned: object(raw.preferences)?.pinned === true,
     status: turnStatus(raw.status),
     activeTurnId: text(raw.active_turn_id),
   };
@@ -356,6 +358,21 @@ export class SessionApi {
       `/api/sessions/${encodeURIComponent(sessionId)}`,
       parseDeleted,
       { method: 'DELETE' },
+    );
+  }
+
+  setPinned(sessionId: string, pinned: boolean): Promise<boolean> {
+    return this.client.json(
+      `/api/sessions/${encodeURIComponent(sessionId)}/organization`,
+      payload => {
+        const raw = record(payload, 'a pin acknowledgement');
+        const session = parseSummary(raw.session);
+        if (session.id !== sessionId || session.pinned !== pinned) {
+          throw new Error('The server did not save the requested pin state');
+        }
+        return pinned;
+      },
+      { method: 'PATCH', body: { pinned } },
     );
   }
 }

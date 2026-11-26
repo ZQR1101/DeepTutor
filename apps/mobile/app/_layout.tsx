@@ -38,11 +38,21 @@ function SessionStack() {
           <Stack.Screen
             name="sessions"
             dangerouslySingular={sessionsRouteId}
-            options={{ headerShown: false }}
+            options={{
+              headerShown: false,
+              presentation: 'transparentModal',
+              animation: 'slide_from_left',
+              gestureEnabled: false,
+              contentStyle: { backgroundColor: 'transparent' },
+            }}
           />
           <Stack.Screen
             name="knowledge/index"
             dangerouslySingular={knowledgeRouteId}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="learning"
             options={{ headerShown: false }}
           />
           <Stack.Screen

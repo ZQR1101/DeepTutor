@@ -12,13 +12,12 @@ import {
 
 import { Action, ErrorNotice, Field } from '../../components/FormControls';
 import { Screen } from '../../components/Screen';
-import { documentState } from '../../features/knowledge/refs';
 import type { KnowledgeBaseSummary } from '../../services/knowledgeApi';
 import { radius, spacing, textSize, useTheme } from '../../theme/useTheme';
-import { StateBadge } from './StateBadge';
 
 export type KnowledgeListScreenProps = {
   bases: readonly KnowledgeBaseSummary[];
+  forUpload?: boolean;
   status: 'loading' | 'ready' | 'failed';
   refreshing: boolean;
   error: string | null;
@@ -33,6 +32,7 @@ export type KnowledgeListScreenProps = {
 
 export function KnowledgeListScreen({
   bases,
+  forUpload = false,
   status,
   refreshing,
   error,
@@ -81,10 +81,10 @@ export function KnowledgeListScreen({
             accessibilityRole="header"
             style={[styles.title, { color: theme.text }]}
           >
-            知识库
+            {forUpload ? '上传文件' : '知识库'}
           </Text>
           <Text style={[styles.hint, { color: theme.muted }]}>
-            文件由服务器解析并建立索引。
+            {forUpload ? '选择要存放文件的知识库。' : '文件由服务器解析并建立索引。'}
           </Text>
         </View>
         <View style={styles.headerActions}>
@@ -125,7 +125,7 @@ export function KnowledgeListScreen({
             status === 'failed' ? null : (
               <View style={styles.center}>
                 <Text style={[styles.emptyTitle, { color: theme.text }]}>
-                  暂无知识库
+                  {forUpload ? '暂无可上传的知识库' : '暂无知识库'}
                 </Text>
                 <Text style={[styles.hint, { color: theme.muted }]}>
                   新建知识库后，上传你想用来提问的文档。
@@ -133,47 +133,25 @@ export function KnowledgeListScreen({
               </View>
             )
           }
-          renderItem={({ item }) => {
-            const state = documentState(item);
-            return (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={item.name}
-                onPress={() => onOpen(item.ref)}
-                style={({ pressed }) => [
-                  styles.row,
-                  {
-                    backgroundColor: theme.surface,
-                    borderColor: theme.border,
-                    opacity: pressed ? 0.8 : 1,
-                  },
-                ]}
-              >
-                <View style={styles.rowBody}>
-                  <Text
-                    numberOfLines={1}
-                    style={[styles.rowTitle, { color: theme.text }]}
-                  >
-                    {item.name}
-                  </Text>
-                  {item.description ? (
-                    <Text
-                      numberOfLines={2}
-                      style={[styles.hint, { color: theme.muted }]}
-                    >
-                      {item.description}
-                    </Text>
-                  ) : null}
-                  <Text style={[styles.hint, { color: theme.muted }]}>
-                    {item.documentCount} 份文档
-                    {item.assigned ? ' · 与你共享' : ''}
-                    {item.readOnly ? ' · 只读' : ''}
-                  </Text>
-                </View>
-                <StateBadge state={state} />
-              </Pressable>
-            );
-          }}
+          renderItem={({ item }) => (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={item.name}
+              onPress={() => onOpen(item.ref)}
+              style={({ pressed }) => [
+                styles.row,
+                {
+                  backgroundColor: theme.surface,
+                  borderColor: theme.border,
+                  opacity: pressed ? 0.8 : 1,
+                },
+              ]}
+            >
+              <Text numberOfLines={1} style={[styles.rowTitle, { color: theme.text }]}>
+                {item.name}
+              </Text>
+            </Pressable>
+          )}
         />
       )}
 
@@ -255,14 +233,13 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: textSize.heading, fontWeight: '700' },
   list: { padding: spacing.lg, gap: spacing.md, flexGrow: 1 },
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
+    minHeight: 48,
+    justifyContent: 'center',
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: radius.md,
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
   },
-  rowBody: { flex: 1, gap: spacing.xs },
   rowTitle: { fontSize: textSize.body, fontWeight: '600' },
   backdrop: {
     flex: 1,

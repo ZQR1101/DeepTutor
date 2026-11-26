@@ -188,8 +188,21 @@ export function useSessionList(
     [],
   );
 
+  const setPinned = useCallback(async (sessionId: string, pinned: boolean) => {
+    const sessionApi = apiRef.current;
+    if (!sessionApi) return;
+    const saved = await sessionApi.setPinned(sessionId, pinned);
+    if (!mounted.current || apiRef.current !== sessionApi) return;
+    rows.current = rows.current.map(session =>
+      session.id === sessionId ? { ...session, pinned: saved } : session,
+    );
+    const sessions = rows.current;
+    setState(current => ({ ...current, sessions }));
+    if (busy.current) await refresh();
+  }, [refresh]);
+
   return useMemo(
-    () => ({ ...state, refresh, loadMore, retry, rename, remove }),
-    [state, refresh, loadMore, retry, rename, remove],
+    () => ({ ...state, refresh, loadMore, retry, rename, remove, setPinned }),
+    [state, refresh, loadMore, retry, rename, remove, setPinned],
   );
 }

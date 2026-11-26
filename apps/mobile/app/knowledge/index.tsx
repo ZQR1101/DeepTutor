@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAppSession } from '../../src/appSession';
 import {
   knowledgeScope,
@@ -12,6 +12,8 @@ import { messageFor } from '../../src/services/knowledgeApi';
 
 export default function KnowledgeRoute() {
   const router = useRouter();
+  const { intent } = useLocalSearchParams<{ intent?: string }>();
+  const forUpload = intent === 'upload';
   const session = useAppSession();
   const [creating, setCreating] = useState(false);
 
@@ -46,7 +48,8 @@ export default function KnowledgeRoute() {
 
   return (
     <KnowledgeListScreen
-      bases={list.bases}
+      bases={forUpload ? list.bases.filter(base => !base.readOnly && base.available !== false) : list.bases}
+      forUpload={forUpload}
       status={list.status}
       refreshing={list.refreshing}
       error={list.error}
